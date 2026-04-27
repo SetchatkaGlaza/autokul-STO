@@ -1,7 +1,7 @@
 <?php
 // includes/header.php - Общая шапка сайта (официальный стиль)
-
 require_once __DIR__ . '/auth_check.php';
+require_once __DIR__ . '/avatar.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -461,20 +461,36 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 <!-- Авторизация -->
                 <div class="header-auth">
                     <?php if (isLoggedIn()): ?>
-                        <a href="/profile.php" class="header-user-avatar" title="Личный кабинет">
-                            <?php echo mb_substr($_SESSION['user_name'], 0, 1); ?>
-                        </a>
-                        <a href="/profile.php" class="header-user-name">
-                            <?php echo htmlspecialchars(mb_substr($_SESSION['user_name'], 0, 15)); ?>
-                        </a>
-                        
-                        <?php if (hasRole('admin') || hasRole('mechanic')): ?>
-                            <a href="/admin/" class="header-admin-link">Управление</a>
-                        <?php endif; ?>
-                        
-                        <a href="/logout.php" class="header-logout">Выйти</a>
-                        
-                    <?php else: ?>
+    <?php 
+        // Получаем аватар пользователя из сессии или БД
+        $header_avatar = $_SESSION['user_avatar'] ?? null;
+        if (!$header_avatar) {
+            // Загружаем из БД если нет в сессии
+            $pdo = getDBConnection();
+            $stmt = $pdo->prepare("SELECT avatar FROM users WHERE id = :id");
+            $stmt->execute(['id' => $_SESSION['user_id']]);
+            $header_avatar = $stmt->fetchColumn();
+            $_SESSION['user_avatar'] = $header_avatar;
+        }
+        $avatar_url = getAvatarUrl($header_avatar);
+    ?>
+    <a href="/profile.php" class="header-user-avatar" title="Личный кабинет" style="background: none; padding: 0; width: 36px; height: 36px;">
+        <img src="<?php echo htmlspecialchars($avatar_url); ?>" 
+             alt="<?php echo htmlspecialchars($_SESSION['user_name']); ?>" 
+             width="36" height="36"
+             style="width: 36px; height: 36px; object-fit: cover; border-radius: 50%; border: 2px solid #e0e0e0;">
+    </a>
+    <a href="/profile.php" class="header-user-name">
+        <?php echo htmlspecialchars(mb_substr($_SESSION['user_name'], 0, 15)); ?>
+    </a>
+    
+    <?php if (hasRole('admin') || hasRole('mechanic')): ?>
+        <a href="/admin/" class="header-admin-link">Управление</a>
+    <?php endif; ?>
+    
+    <a href="/logout.php" class="header-logout">Выйти</a>
+    
+<?php else: ?>
                         <a href="/login.php" class="btn btn-outline-dark">Войти</a>
                         <a href="/register.php" class="btn btn-accent">Регистрация</a>
                     <?php endif; ?>

@@ -10,7 +10,193 @@ $page_title = 'Управление услугами — Панель управ
 $pdo = getDBConnection();
 
 // ============================================================
-// AJAX-ОБРАБОТЧИКИ (должны быть до любого вывода HTML)
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (должны быть до вызова)
+// ============================================================
+
+/**
+ * Валидация изображения услуги
+ */
+function validateServiceImage($file) {
+    if (!isset($file) || $file['error'] !== UPLOAD_ERR_OK) {
+        $error_messages = [
+            UPLOAD_ERR_INI_SIZE => 'Файл превышает максимальный размер, установленный сервером.',
+            UPLOAD_ERR_FORM_SIZE => 'Файл превышает максимальный размер, указанный в форме.',
+            UPLOAD_ERR_PARTIAL => 'Файл был загружен частично.',
+            UPLOAD_ERR_NO_FILE => 'Файл не был загружен.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Отсутствует временная папка на сервере.',
+            UPLOAD_ERR_CANT_WRITE => 'Ошибка записи файла на диск.',
+            UPLOAD_ERR_EXTENSION => 'Загрузка остановлена расширением PHP.',
+        ];
+        $error_code = $file['error'];
+        return [
+            'success' => false,
+            'message' => $error_messages[$error_code] ?? 'Неизвестная ошибка загрузки.'
+        ];
+    }
+    
+    $max_size = 10 * 1024 * 1024;
+    if ($file['size'] > $max_size) {
+        return [
+            'success' => false,
+            'message' => 'Размер изображения не должен превышать 10 МБ.'
+        ];
+    }
+    
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime_type = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+    
+    $allowed_types = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!in_array($mime_type, $allowed_types)) {
+        return [
+            'success' => false,
+            'message' => 'Допустимы только форматы: JPEG, PNG, WebP.'
+        ];
+    }
+    
+    $image_info = @getimagesize($file['tmp_name']);
+    if ($image_info === false) {
+        return [
+            'success' => false,
+            'message' => 'Файл не является изображением.'
+        ];
+    }
+    
+    if ($image_info[0] < 400 || $image_info[1] < 300) {
+        return [
+            'success' => false,
+            'message' => 'Минимальное разрешение: 400x300 пикселей.'
+        ];
+    }
+    
+    return [
+        'success' => true,
+        'message' => 'OK',
+        'mime_type' => $mime_type
+    ];
+}
+
+/**
+ * Сохранение изображения услуги
+ */
+function saveServiceImage($file) {
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime_type = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+    
+    $extension = 'jpg';
+    switch ($mime_type) {
+        case 'image/png':
+            $extension = 'png';
+            break;
+        case 'image/webp':
+            $extension = 'webp';
+            break;
+    }
+    
+    $upload_dir = __DIR__ . '/../uploads/services/';
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0755, true);
+    }
+    
+    $filename = 'service_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
+    $filepath = $upload_dir . $filename;
+    
+    $source = null;
+    switch ($mime_type) {
+        case 'image/jpeg':
+            $source = @imagecreatefromjpeg($file['tmp_name']);
+            break;
+        case 'image/png':
+            $source = @imagecreatefrompng($file['tmp_name']);
+            break;
+        case 'image/webp':
+            $source = @imagecreatefromwebp($file['tmp_name']);
+            break;
+    }
+    
+    if (!$source) {
+        return null;
+    }
+    
+    $src_w = imagesx($source);
+    $src_h = imagesy($source);
+    
+    $new_w = 800;
+    $new_h = 600;
+    
+    $ratio_src = $src_w / $src_h;
+    $ratio_new = $new_w / $new_h;
+    
+    if ($ratio_src > $ratio_new) {
+        $crop_w = $src_h * $ratio_new;
+        $crop_h = $src_h;
+        $crop_x = ($src_w - $crop_w) / 2;
+        $crop_y = 0;
+    } else {
+        $crop_w = $src_w;
+        $crop_h = $src_w / $ratio_new;
+        $crop_x = 0;
+        $crop_y = ($src_h - $crop_h) / 2;
+    }
+    
+    $new_image = imagecreatetruecolor($new_w, $new_h);
+    
+    if ($mime_type == 'image/png') {
+        imagealphablending($new_image, false);
+        imagesavealpha($new_image, true);
+    }
+    
+    imagecopyresampled(
+        $new_image, $source,
+        0, 0,
+        (int)$crop_x, (int)$crop_y,
+        $new_w, $new_h,
+        (int)$crop_w, (int)$crop_h
+    );
+    
+    switch ($mime_type) {
+        case 'image/jpeg':
+            imagejpeg($new_image, $filepath, 85);
+            break;
+        case 'image/png':
+            imagepng($new_image, $filepath, 7);
+            break;
+        case 'image/webp':
+            imagewebp($new_image, $filepath, 85);
+            break;
+    }
+    
+    imagedestroy($source);
+    imagedestroy($new_image);
+    
+    return 'uploads/services/' . $filename;
+}
+
+/**
+ * Построение URL с сохранением фильтров
+ */
+function buildUrl($params = []) {
+    $get = $_GET;
+    foreach ($params as $key => $value) {
+        if ($value === null || $value === '' || $value === 0 || $value === '0') {
+            unset($get[$key]);
+        } else {
+            $get[$key] = $value;
+        }
+    }
+    $get = array_filter($get, function($v) { 
+        return $v !== '' && $v !== 0 && $v !== '0'; 
+    });
+    $url = '/admin/services.php';
+    if (!empty($get)) {
+        $url .= '?' . http_build_query($get);
+    }
+    return $url;
+}
+
+// ============================================================
+// AJAX-ОБРАБОТЧИКИ
 // ============================================================
 
 // AJAX: получение данных услуги для редактирования
@@ -24,7 +210,7 @@ if (isset($_GET['edit']) && isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         echo json_encode($service, JSON_UNESCAPED_UNICODE);
     } else {
         http_response_code(404);
-        echo json_encode(['error' => 'Услуга не найдена']);
+        echo json_encode(['error' => 'Услуга не найдена'], JSON_UNESCAPED_UNICODE);
     }
     exit;
 }
@@ -33,12 +219,10 @@ if (isset($_GET['edit']) && isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'toggle_active') {
     $service_id = intval($_POST['service_id'] ?? 0);
     
-    // Получаем текущее состояние
     $stmt = $pdo->prepare("SELECT is_active FROM services WHERE id = :id");
     $stmt->execute(['id' => $service_id]);
     $current = $stmt->fetchColumn();
     
-    // Переключаем
     $new_state = $current ? 0 : 1;
     $stmt = $pdo->prepare("UPDATE services SET is_active = :state WHERE id = :id");
     $stmt->execute(['state' => $new_state, 'id' => $service_id]);
@@ -54,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // ============================================================
-// ОБРАБОТКА ОБЫЧНЫХ POST-ЗАПРОСОВ
+// ОБРАБОТКА POST-ЗАПРОСОВ
 // ============================================================
 
 $message = '';
@@ -78,49 +262,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if ($duration <= 0) $errors[] = 'Укажите длительность (минимум 1 минута)';
     if ($duration > 1440) $errors[] = 'Длительность не может быть больше 24 часов';
     
+    // Обработка изображения
+    $image_path = null;
+    if (isset($_FILES['service_image']) && $_FILES['service_image']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $image_validation = validateServiceImage($_FILES['service_image']);
+        if ($image_validation['success']) {
+            $image_path = saveServiceImage($_FILES['service_image']);
+            if (!$image_path) {
+                $errors[] = 'Ошибка при сохранении изображения.';
+            }
+        } else {
+            $errors[] = $image_validation['message'];
+        }
+    }
+    
     if (empty($errors)) {
         try {
             if ($service_id > 0) {
-                // Редактирование существующей услуги
-                $stmt = $pdo->prepare("
-                    UPDATE services 
-                    SET category_id = :cat, name = :name, description = :desc, 
-                        price = :price, duration = :dur 
-                    WHERE id = :id
-                ");
-                $stmt->execute([
-                    'cat' => $category_id,
-                    'name' => $name,
-                    'desc' => $description,
-                    'price' => $price,
-                    'dur' => $duration,
-                    'id' => $service_id
-                ]);
-                $message = '✅ Услуга «' . htmlspecialchars($name) . '» успешно обновлена!';
+                // Редактирование
+                if ($image_path) {
+                    $stmt = $pdo->prepare("SELECT image FROM services WHERE id = :id");
+                    $stmt->execute(['id' => $service_id]);
+                    $old_image = $stmt->fetchColumn();
+                    
+                    $stmt = $pdo->prepare("
+                        UPDATE services 
+                        SET category_id = :cat, name = :name, description = :desc, 
+                            image = :img, price = :price, duration = :dur 
+                        WHERE id = :id
+                    ");
+                    $stmt->execute([
+                        'cat' => $category_id, 'name' => $name, 'desc' => $description,
+                        'img' => $image_path, 'price' => $price, 'dur' => $duration,
+                        'id' => $service_id
+                    ]);
+                    
+                    if (!empty($old_image) && file_exists(__DIR__ . '/../' . $old_image)) {
+                        @unlink(__DIR__ . '/../' . $old_image);
+                    }
+                } else {
+                    $stmt = $pdo->prepare("
+                        UPDATE services 
+                        SET category_id = :cat, name = :name, description = :desc, 
+                            price = :price, duration = :dur 
+                        WHERE id = :id
+                    ");
+                    $stmt->execute([
+                        'cat' => $category_id, 'name' => $name, 'desc' => $description,
+                        'price' => $price, 'dur' => $duration, 'id' => $service_id
+                    ]);
+                }
+                $message = 'Услуга "' . htmlspecialchars($name) . '" успешно обновлена!';
                 $message_type = 'success';
             } else {
-                // Добавление новой услуги
+                // Добавление
                 $stmt = $pdo->prepare("
-                    INSERT INTO services (category_id, name, description, price, duration, is_active) 
-                    VALUES (:cat, :name, :desc, :price, :dur, 1)
+                    INSERT INTO services (category_id, name, description, image, price, duration, is_active) 
+                    VALUES (:cat, :name, :desc, :img, :price, :dur, 1)
                 ");
                 $stmt->execute([
-                    'cat' => $category_id,
-                    'name' => $name,
-                    'desc' => $description,
-                    'price' => $price,
-                    'dur' => $duration
+                    'cat' => $category_id, 'name' => $name, 'desc' => $description,
+                    'img' => $image_path, 'price' => $price, 'dur' => $duration
                 ]);
                 $new_id = $pdo->lastInsertId();
-                $message = '✅ Услуга «' . htmlspecialchars($name) . '» успешно добавлена! (ID: #' . $new_id . ')';
+                $message = 'Услуга "' . htmlspecialchars($name) . '" успешно добавлена!';
                 $message_type = 'success';
             }
         } catch (PDOException $e) {
-            $message = '❌ Ошибка базы данных: ' . $e->getMessage();
+            $message = 'Ошибка базы данных: ' . $e->getMessage();
             $message_type = 'error';
         }
     } else {
-        $message = '⚠️ Пожалуйста, исправьте ошибки:<br>• ' . implode('<br>• ', $errors);
+        $message = 'Пожалуйста, исправьте ошибки:<br>- ' . implode('<br>- ', $errors);
         $message_type = 'error';
     }
 }
@@ -130,33 +343,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $service_id = intval($_POST['service_id'] ?? 0);
     
     try {
-        // Сначала проверяем, есть ли связанные записи
         $check_stmt = $pdo->prepare("SELECT COUNT(*) FROM appointment_services WHERE service_id = :id");
         $check_stmt->execute(['id' => $service_id]);
         $linked_count = $check_stmt->fetchColumn();
         
         if ($linked_count > 0) {
-            // Деактивируем вместо полного удаления
             $stmt = $pdo->prepare("UPDATE services SET is_active = 0 WHERE id = :id");
             $stmt->execute(['id' => $service_id]);
-            $message = '⚠️ Услуга деактивирована (имеет ' . $linked_count . ' связанных записей, поэтому не может быть удалена полностью).';
+            $message = 'Услуга деактивирована (имеет ' . $linked_count . ' связанных записей).';
             $message_type = 'warning';
         } else {
-            // Удаляем полностью
+            // Удаляем изображение
+            $stmt = $pdo->prepare("SELECT image FROM services WHERE id = :id");
+            $stmt->execute(['id' => $service_id]);
+            $old_image = $stmt->fetchColumn();
+            
             $stmt = $pdo->prepare("DELETE FROM services WHERE id = :id");
             $stmt->execute(['id' => $service_id]);
-            $message = '🗑️ Услуга успешно удалена.';
+            
+            if (!empty($old_image) && file_exists(__DIR__ . '/../' . $old_image)) {
+                @unlink(__DIR__ . '/../' . $old_image);
+            }
+            
+            $message = 'Услуга успешно удалена.';
             $message_type = 'success';
         }
     } catch (PDOException $e) {
-        // Если ошибка внешнего ключа — деактивируем
         if ($e->getCode() == 23000) {
             $stmt = $pdo->prepare("UPDATE services SET is_active = 0 WHERE id = :id");
             $stmt->execute(['id' => $service_id]);
-            $message = '⚠️ Услуга деактивирована (есть связанные данные).';
+            $message = 'Услуга деактивирована (есть связанные данные).';
             $message_type = 'warning';
         } else {
-            $message = '❌ Ошибка при удалении: ' . $e->getMessage();
+            $message = 'Ошибка при удалении: ' . $e->getMessage();
             $message_type = 'error';
         }
     }
@@ -171,10 +390,8 @@ $search = trim($_GET['search'] ?? '');
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $per_page = 12;
 
-// Получаем категории
 $categories = $pdo->query("SELECT * FROM categories ORDER BY id")->fetchAll();
 
-// Строим WHERE
 $where = [];
 $params = [];
 
@@ -191,7 +408,6 @@ if (!empty($search)) {
 
 $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 
-// Подсчёт
 $count_sql = "SELECT COUNT(*) FROM services s $where_clause";
 $count_stmt = $pdo->prepare($count_sql);
 $count_stmt->execute($params);
@@ -199,7 +415,6 @@ $total_services = $count_stmt->fetchColumn();
 $total_pages = ceil($total_services / max($per_page, 1));
 $offset = ($page - 1) * $per_page;
 
-// Получаем услуги
 $query = "
     SELECT s.*, c.name AS category_name
     FROM services s
@@ -216,27 +431,6 @@ $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
 $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $services = $stmt->fetchAll();
-
-// Функция для построения URL с сохранением фильтров
-function buildUrl($params = []) {
-    $get = $_GET;
-    foreach ($params as $key => $value) {
-        if ($value === null || $value === '' || $value === 0 || $value === '0') {
-            unset($get[$key]);
-        } else {
-            $get[$key] = $value;
-        }
-    }
-    // Убираем пустые
-    $get = array_filter($get, function($v) { 
-        return $v !== '' && $v !== 0 && $v !== '0'; 
-    });
-    $url = '/admin/services.php';
-    if (!empty($get)) {
-        $url .= '?' . http_build_query($get);
-    }
-    return $url;
-}
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -360,7 +554,6 @@ function buildUrl($params = []) {
         .btn-danger { background: #dc3545; color: white; }
         .btn-danger:hover { background: #c82333; }
 
-        /* Сообщения */
         .alert {
             padding: 14px 18px;
             border-radius: 10px;
@@ -371,7 +564,6 @@ function buildUrl($params = []) {
         .alert-error { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
         .alert-warning { background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; }
 
-        /* Фильтры */
         .filters-card {
             background: white;
             border-radius: 12px;
@@ -406,7 +598,6 @@ function buildUrl($params = []) {
             box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.08);
         }
 
-        /* Сетка услуг */
         .services-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -539,7 +730,6 @@ function buildUrl($params = []) {
             text-transform: uppercase;
         }
 
-        /* Пагинация */
         .pagination {
             display: flex;
             justify-content: center;
@@ -563,7 +753,6 @@ function buildUrl($params = []) {
         .pagination .active { background: #d32f2f; color: white; border-color: #d32f2f; }
         .pagination .disabled { opacity: 0.4; pointer-events: none; }
 
-        /* Модальное окно */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -677,23 +866,23 @@ function buildUrl($params = []) {
         <aside class="admin-sidebar">
             <div class="sidebar-title">Панель управления</div>
             <nav class="sidebar-nav">
-                <a href="/admin/index.php">📊 Дашборд</a>
-                <a href="/admin/appointments.php">📅 Записи</a>
-                <a href="/admin/services.php" class="active">🔧 Услуги</a>
-                <a href="/admin/categories.php">📂 Категории</a>
-                <a href="/admin/reviews.php">⭐ Отзывы</a>
-                <a href="/admin/users.php">👥 Клиенты</a>
+                <a href="/admin/index.php">Дашборд</a>
+                <a href="/admin/appointments.php">Записи</a>
+                <a href="/admin/services.php" class="active">Услуги</a>
+                <a href="/admin/categories.php">Категории</a>
+                <a href="/admin/reviews.php">Отзывы</a>
+                <a href="/admin/users.php">Клиенты</a>
                 <hr class="sidebar-divider">
-                <a href="/index.php">🏠 На сайт</a>
-                <a href="/logout.php">🚪 Выйти</a>
+                <a href="/index.php">На сайт</a>
+                <a href="/logout.php">Выйти</a>
             </nav>
         </aside>
 
         <main class="admin-content">
             
             <div class="admin-header">
-                <h1>🔧 Управление услугами</h1>
-                <button class="btn btn-primary" onclick="openModal()">➕ Добавить услугу</button>
+                <h1>Управление услугами</h1>
+                <button class="btn btn-primary" onclick="openModal()">Добавить услугу</button>
             </div>
 
             <?php if ($message): ?>
@@ -702,15 +891,14 @@ function buildUrl($params = []) {
                 </div>
             <?php endif; ?>
 
-            <!-- Фильтры -->
             <form method="GET" action="/admin/services.php" class="filters-card">
                 <div class="filter-group" style="flex: 1; min-width: 180px;">
-                    <label>🔍 Поиск</label>
+                    <label>Поиск</label>
                     <input type="text" name="search" placeholder="Название услуги..." 
                            value="<?php echo htmlspecialchars($search); ?>">
                 </div>
                 <div class="filter-group" style="min-width: 180px;">
-                    <label>📂 Категория</label>
+                    <label>Категория</label>
                     <select name="category" onchange="this.form.submit()">
                         <option value="0">Все категории</option>
                         <?php foreach ($categories as $cat): ?>
@@ -726,7 +914,6 @@ function buildUrl($params = []) {
                 </div>
             </form>
 
-            <!-- Сетка услуг -->
             <?php if (count($services) > 0): ?>
                 <div class="services-grid">
                     <?php foreach ($services as $svc): ?>
@@ -738,13 +925,13 @@ function buildUrl($params = []) {
                             <div class="service-actions">
                                 <button onclick="toggleActive(<?php echo $svc['id']; ?>)" 
                                         title="<?php echo $svc['is_active'] ? 'Деактивировать' : 'Активировать'; ?>">
-                                    <?php echo $svc['is_active'] ? '👁️' : '🔒'; ?>
+                                    <?php echo $svc['is_active'] ? '&#128065;' : '&#128274;'; ?>
                                 </button>
-                                <button onclick="editService(<?php echo $svc['id']; ?>)" title="Редактировать">✏️</button>
-                                <form method="POST" style="display: inline;" onsubmit="return confirm('Удалить услугу «<?php echo htmlspecialchars($svc['name']); ?>»?')">
+                                <button onclick="editService(<?php echo $svc['id']; ?>)" title="Редактировать">&#9998;</button>
+                                <form method="POST" style="display: inline;" onsubmit="return confirm('Удалить услугу &laquo;<?php echo htmlspecialchars(addslashes($svc['name'])); ?>&raquo;?')">
                                     <input type="hidden" name="action" value="delete_service">
                                     <input type="hidden" name="service_id" value="<?php echo $svc['id']; ?>">
-                                    <button type="submit" title="Удалить" style="color: #dc3545;">🗑️</button>
+                                    <button type="submit" title="Удалить" style="color: #dc3545;">&#128465;</button>
                                 </form>
                             </div>
 
@@ -754,18 +941,17 @@ function buildUrl($params = []) {
                             <h3><?php echo htmlspecialchars($svc['name']); ?></h3>
                             <p class="description"><?php echo htmlspecialchars($svc['description'] ?: 'Без описания'); ?></p>
                             <div class="service-card-footer">
-                                <span class="service-price"><?php echo number_format($svc['price'], 0, ',', ' '); ?> ₽</span>
-                                <span class="service-duration">⏱ <?php echo $svc['duration']; ?> мин.</span>
+                                <span class="service-price"><?php echo number_format($svc['price'], 0, ',', ' '); ?> руб.</span>
+                                <span class="service-duration"><?php echo $svc['duration']; ?> мин.</span>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
 
-                <!-- Пагинация -->
                 <?php if ($total_pages > 1): ?>
                     <div class="pagination">
                         <?php if ($page > 1): ?>
-                            <a href="<?php echo buildUrl(['page' => $page - 1]); ?>">←</a>
+                            <a href="<?php echo buildUrl(['page' => $page - 1]); ?>">&larr;</a>
                         <?php endif; ?>
                         <?php for ($i = 1; $i <= $total_pages; $i++): 
                             if ($i == 1 || $i == $total_pages || ($i >= $page - 2 && $i <= $page + 2)):
@@ -779,14 +965,14 @@ function buildUrl($params = []) {
                             <span>...</span>
                         <?php endif; endfor; ?>
                         <?php if ($page < $total_pages): ?>
-                            <a href="<?php echo buildUrl(['page' => $page + 1]); ?>">→</a>
+                            <a href="<?php echo buildUrl(['page' => $page + 1]); ?>">&rarr;</a>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
 
             <?php else: ?>
                 <div class="empty-state">
-                    <div style="font-size: 48px; margin-bottom: 12px;">🔧</div>
+                    <div style="font-size: 48px; margin-bottom: 12px;">&#128295;</div>
                     <p>Услуг не найдено</p>
                     <small>Добавьте первую услугу или измените параметры поиска</small>
                 </div>
@@ -795,11 +981,10 @@ function buildUrl($params = []) {
         </main>
     </div>
 
-    <!-- Модальное окно -->
     <div class="modal-overlay" id="serviceModal">
         <div class="modal">
-            <h2 id="modalTitle">➕ Добавить услугу</h2>
-            <form method="POST" action="/admin/services.php" id="serviceForm">
+            <h2 id="modalTitle">Добавить услугу</h2>
+            <form method="POST" action="/admin/services.php" id="serviceForm" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="save_service">
                 <input type="hidden" name="service_id" id="serviceId" value="0">
                 
@@ -822,10 +1007,32 @@ function buildUrl($params = []) {
                     <label>Описание</label>
                     <textarea name="description" id="serviceDescription" placeholder="Подробное описание услуги..."></textarea>
                 </div>
+
+                <div class="form-group">
+                    <label>Изображение услуги</label>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <img id="serviceImagePreview" src="/uploads/services/default-service.png" 
+                             alt="Превью" 
+                             style="width: 160px; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid #e0e0e0;">
+                        <div>
+                            <input type="file" name="service_image" id="serviceImageInput" 
+                                   accept="image/jpeg,image/png,image/webp"
+                                   style="display: none;" 
+                                   onchange="previewServiceImage(this)">
+                            <button type="button" class="btn btn-sm btn-outline" 
+                                    onclick="document.getElementById('serviceImageInput').click();">
+                                Выбрать изображение
+                            </button>
+                            <p style="font-size: 11px; color: #9e9e9e; margin-top: 4px;">
+                                JPEG, PNG или WebP. Рекомендуемый размер: 800x600 пикселей.
+                            </p>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Цена (₽) <span class="required">*</span></label>
+                        <label>Цена (руб.) <span class="required">*</span></label>
                         <input type="number" name="price" id="servicePrice" placeholder="3500" step="0.01" min="0" required>
                     </div>
                     <div class="form-group">
@@ -836,7 +1043,7 @@ function buildUrl($params = []) {
                 
                 <div class="modal-actions">
                     <button type="button" class="btn btn-outline" onclick="closeModal()">Отмена</button>
-                    <button type="submit" class="btn btn-primary">💾 Сохранить</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
                 </div>
             </form>
         </div>
@@ -845,32 +1052,44 @@ function buildUrl($params = []) {
     <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
     <script>
-    // Модальное окно
-    function openModal(serviceId = null) {
+    function openModal(serviceId) {
+        serviceId = serviceId || null;
         const modal = document.getElementById('serviceModal');
         const title = document.getElementById('modalTitle');
         const form = document.getElementById('serviceForm');
         
-        // Сбрасываем форму
         form.reset();
         document.getElementById('serviceId').value = '0';
+        document.getElementById('serviceImagePreview').src = '/uploads/services/default-service.png';
         
         if (serviceId) {
-            title.textContent = '✏️ Редактировать услугу';
-            // Загружаем данные через AJAX
-            fetch(`/admin/services.php?edit=${serviceId}&ajax=1`)
-                .then(res => res.json())
-                .then(data => {
+            title.textContent = 'Редактировать услугу';
+            fetch('/admin/services.php?edit=' + serviceId + '&ajax=1')
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
                     document.getElementById('serviceId').value = data.id;
                     document.getElementById('categoryId').value = data.category_id;
                     document.getElementById('serviceName').value = data.name;
                     document.getElementById('serviceDescription').value = data.description || '';
                     document.getElementById('servicePrice').value = data.price;
                     document.getElementById('serviceDuration').value = data.duration;
+                    
+                    var preview = document.getElementById('serviceImagePreview');
+                    if (data.image) {
+                        preview.src = '/' + data.image;
+                    } else {
+                        preview.src = '/uploads/services/default-service.png';
+                    }
                 })
-                .catch(err => console.error('Ошибка загрузки услуги:', err));
+                .catch(function(err) {
+                    console.error('Ошибка загрузки услуги:', err);
+                });
         } else {
-            title.textContent = '➕ Добавить услугу';
+            title.textContent = 'Добавить услугу';
         }
         
         modal.classList.add('show');
@@ -880,46 +1099,52 @@ function buildUrl($params = []) {
         document.getElementById('serviceModal').classList.remove('show');
     }
 
-    // Закрытие по клику на оверлей
     document.getElementById('serviceModal').addEventListener('click', function(e) {
         if (e.target === this) closeModal();
     });
 
-    // Закрытие по Escape
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') closeModal();
     });
 
-    // Функция editService (из карточки)
     function editService(serviceId) {
         openModal(serviceId);
     }
 
-    // Переключение активности через AJAX
+    function previewServiceImage(input) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('serviceImagePreview').src = e.target.result;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
     async function toggleActive(serviceId) {
         try {
-            const formData = new FormData();
+            var formData = new FormData();
             formData.append('action', 'toggle_active');
             formData.append('service_id', serviceId);
 
-            const response = await fetch('/admin/services.php', {
+            var response = await fetch('/admin/services.php', {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
 
-            const data = await response.json();
+            var data = await response.json();
             
             if (data.success) {
-                const card = document.getElementById('service-' + serviceId);
+                var card = document.getElementById('service-' + serviceId);
                 if (data.is_active) {
                     card.classList.remove('inactive');
-                    const badge = card.querySelector('.inactive-badge');
+                    var badge = card.querySelector('.inactive-badge');
                     if (badge) badge.remove();
                 } else {
                     card.classList.add('inactive');
                     if (!card.querySelector('.inactive-badge')) {
-                        const badge = document.createElement('span');
+                        var badge = document.createElement('span');
                         badge.className = 'inactive-badge';
                         badge.textContent = 'Неактивна';
                         card.insertBefore(badge, card.firstChild);
@@ -930,25 +1155,6 @@ function buildUrl($params = []) {
             console.error('Ошибка:', err);
         }
     }
-
-    // AJAX-обработчик для получения данных услуги
-    <?php
-    // В начале файла нужно добавить поддержку AJAX-запроса для редактирования
-    if (isset($_GET['edit']) && isset($_GET['ajax'])) {
-        header('Content-Type: application/json');
-        $edit_id = intval($_GET['edit']);
-        $stmt = $pdo->prepare("SELECT * FROM services WHERE id = :id");
-        $stmt->execute(['id' => $edit_id]);
-        $service = $stmt->fetch();
-        if ($service) {
-            echo json_encode($service);
-        } else {
-            http_response_code(404);
-            echo json_encode(['error' => 'Не найдено']);
-        }
-        exit;
-    }
-    ?>
     </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 <?php
-// services.php - Каталог услуг автосервиса
+// services.php - Каталог услуг с изображениями
 
 require_once 'includes/config.php';
 require_once 'includes/auth_check.php';
@@ -7,29 +7,29 @@ require_once 'includes/auth_check.php';
 $page_title = 'Услуги и цены — Автокул СТО';
 $pdo = getDBConnection();
 
-// Получаем все категории
+// Получаем категории
 $categories = $pdo->query("SELECT * FROM categories ORDER BY id")->fetchAll();
 
-// Получаем все активные услуги с категориями
+// Получаем услуги
 $all_services = $pdo->query("
     SELECT s.*, c.name AS category_name, c.id AS category_id
     FROM services s
     JOIN categories c ON s.category_id = c.id
     WHERE s.is_active = 1
-    ORDER BY c.id, s.price ASC
+    ORDER BY c.id, s.name ASC
 ")->fetchAll();
 
-// Группируем услуги по категориям для подсчёта
+// Группируем по категориям
 $services_by_category = [];
 foreach ($all_services as $svc) {
     $services_by_category[$svc['category_id']][] = $svc;
 }
 
-// Определяем активную категорию (из GET-параметра)
+// Фильтрация
 $active_category = isset($_GET['category']) ? intval($_GET['category']) : 0;
 $search_query = trim($_GET['search'] ?? '');
+$sort_by = $_GET['sort'] ?? 'name';
 
-// Фильтруем услуги
 $filtered_services = $all_services;
 
 if ($active_category > 0) {
@@ -46,86 +46,89 @@ if (!empty($search_query)) {
     });
 }
 
-// Сортируем (по цене по умолчанию)
-$sort_by = $_GET['sort'] ?? 'price_asc';
+// Сортировка
 switch ($sort_by) {
+    case 'price_asc':
+        usort($filtered_services, function($a, $b) { return $a['price'] <=> $b['price']; });
+        break;
     case 'price_desc':
         usort($filtered_services, function($a, $b) { return $b['price'] <=> $a['price']; });
         break;
-    case 'duration_asc':
+    case 'duration':
         usort($filtered_services, function($a, $b) { return $a['duration'] <=> $b['duration']; });
         break;
-    case 'duration_desc':
-        usort($filtered_services, function($a, $b) { return $b['duration'] <=> $a['duration']; });
-        break;
-    case 'name':
+    default:
         usort($filtered_services, function($a, $b) { return strcmp($a['name'], $b['name']); });
-        break;
-    default: // price_asc
-        usort($filtered_services, function($a, $b) { return $a['price'] <=> $b['price']; });
-        break;
+}
+
+// Функция получения URL изображения
+function getServiceImage($image_path) {
+    if (!empty($image_path) && file_exists(__DIR__ . '/' . $image_path)) {
+        return '/' . $image_path;
+    }
+    return '/uploads/services/default-service.png';
 }
 
 require_once 'includes/header.php';
 ?>
 
 <style>
-    /* ========== ОСНОВНОЙ КОНТЕЙНЕР ========== */
-    .services-page {
-        max-width: var(--max-width);
-        margin: 0 auto;
-        padding: 40px 20px;
-    }
-
     /* ========== ЗАГОЛОВОК СТРАНИЦЫ ========== */
     .page-hero {
         text-align: center;
-        padding: 50px 20px 40px;
-        background: linear-gradient(135deg, var(--secondary) 0%, #373737 100%);
-        color: white;
+        padding: 60px 20px 50px;
+        background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+        color: #ffffff;
         margin-bottom: 0;
     }
 
     .page-hero h1 {
-        font-size: 36px;
-        font-weight: 800;
-        margin-bottom: 10px;
+        font-size: 38px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        letter-spacing: -0.5px;
     }
 
     .page-hero h1 span {
-        color: var(--primary);
+        color: #cc3333;
     }
 
     .page-hero p {
         font-size: 16px;
-        color: #ccc;
+        color: #aaaaaa;
         max-width: 600px;
         margin: 0 auto;
+        line-height: 1.6;
     }
 
-    /* ========== ПАНЕЛЬ ФИЛЬТРОВ И ПОИСКА ========== */
+    /* ========== КОНТЕЙНЕР ========== */
+    .services-page {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px 40px;
+    }
+
+    /* ========== ПАНЕЛЬ ФИЛЬТРОВ ========== */
     .filters-panel {
-        background: var(--white);
-        border-radius: 14px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        background: #ffffff;
+        border-radius: 12px;
         padding: 20px 24px;
-        margin-top: -30px;
+        margin-top: -28px;
+        border: 1px solid #e8eaed;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.06);
         position: sticky;
-        top: calc(var(--header-height) + 10px);
+        top: 84px;
         z-index: 100;
-        border: 1px solid var(--gray-200);
-        margin-bottom: 30px;
+        margin-bottom: 28px;
     }
 
-    .filters-top {
+    .filters-row {
         display: flex;
         gap: 12px;
         flex-wrap: wrap;
-        align-items: center;
-        margin-bottom: 16px;
+        align-items: flex-end;
     }
 
-    /* Поиск */
     .search-wrapper {
         flex: 1;
         min-width: 220px;
@@ -134,164 +137,183 @@ require_once 'includes/header.php';
 
     .search-wrapper input {
         width: 100%;
-        padding: 11px 16px 11px 42px;
-        border: 1px solid var(--gray-300);
-        border-radius: 10px;
-        font-size: 15px;
+        padding: 10px 14px 10px 40px;
+        border: 1px solid #d0d4d8;
+        border-radius: 8px;
+        font-size: 14px;
         outline: none;
-        transition: var(--transition);
-        background: var(--gray-100);
+        transition: all 0.2s ease;
+        background: #fafafa;
     }
 
     .search-wrapper input:focus {
-        border-color: var(--primary);
-        background: var(--white);
-        box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.08);
+        border-color: #cc3333;
+        background: #ffffff;
+        box-shadow: 0 0 0 3px rgba(204, 51, 51, 0.06);
     }
 
     .search-wrapper .search-icon {
         position: absolute;
-        left: 14px;
+        left: 12px;
         top: 50%;
         transform: translateY(-50%);
-        font-size: 17px;
-        color: var(--gray-500);
+        color: #999;
+        pointer-events: none;
     }
 
-    /* Сортировка */
+    .search-wrapper .search-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+
     .sort-select {
-        padding: 11px 36px 11px 14px;
-        border: 1px solid var(--gray-300);
-        border-radius: 10px;
-        font-size: 14px;
-        background: var(--gray-100);
+        padding: 10px 34px 10px 14px;
+        border: 1px solid #d0d4d8;
+        border-radius: 8px;
+        font-size: 13px;
+        background: #fafafa;
         cursor: pointer;
         outline: none;
         appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%239e9e9e'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
-        background-position: right 12px center;
-        transition: var(--transition);
-        min-width: 200px;
+        background-position: right 10px center;
+        min-width: 190px;
     }
 
     .sort-select:focus {
-        border-color: var(--primary);
+        border-color: #cc3333;
     }
 
-    /* Категории-фильтры */
+    /* Категории */
     .category-tabs {
         display: flex;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: wrap;
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid #f0f0f0;
     }
 
     .category-tab {
-        padding: 8px 18px;
+        padding: 7px 16px;
         border-radius: 20px;
-        border: 2px solid var(--gray-200);
-        background: var(--white);
-        cursor: pointer;
         font-size: 13px;
         font-weight: 500;
-        transition: var(--transition);
-        white-space: nowrap;
         text-decoration: none;
-        color: var(--gray-700);
+        transition: all 0.2s ease;
+        border: 1.5px solid #e0e0e0;
+        background: #ffffff;
+        color: #555;
         display: flex;
         align-items: center;
         gap: 6px;
     }
 
     .category-tab:hover {
-        border-color: var(--primary);
-        color: var(--primary);
+        border-color: #cc3333;
+        color: #cc3333;
+        background: #fefafa;
     }
 
     .category-tab.active {
-        background: var(--primary);
-        color: white;
-        border-color: var(--primary);
+        background: #cc3333;
+        color: #ffffff;
+        border-color: #cc3333;
     }
 
     .category-tab .tab-count {
-        background: rgba(0,0,0,0.1);
-        padding: 2px 8px;
-        border-radius: 10px;
         font-size: 11px;
+        background: rgba(0,0,0,0.08);
+        padding: 2px 7px;
+        border-radius: 10px;
         font-weight: 600;
     }
 
     .category-tab.active .tab-count {
-        background: rgba(255,255,255,0.25);
+        background: rgba(255,255,255,0.2);
     }
 
-    /* ========== СЕТКА УСЛУГ ========== */
+    /* ========== СЕТКА УСЛУГ (3 в ряд) ========== */
     .services-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
     }
 
-    /* Карточка услуги */
     .service-card {
-        background: var(--white);
+        background: #ffffff;
         border-radius: 12px;
-        border: 1px solid var(--gray-200);
+        border: 1px solid #e8eaed;
         overflow: hidden;
-        transition: var(--transition);
+        transition: all 0.3s ease;
         display: flex;
         flex-direction: column;
     }
 
     .service-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 8px 28px rgba(0,0,0,0.1);
-        border-color: var(--primary);
+        box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+        border-color: #d0d0d0;
     }
 
-    .service-card-header {
-        padding: 20px 20px 12px;
-        border-bottom: 1px solid var(--gray-100);
+    /* Изображение услуги */
+    .service-image-wrapper {
+        position: relative;
+        width: 100%;
+        height: 240px;
+        overflow: hidden;
+        background: #f5f5f5;
     }
 
-    .service-category-label {
-        display: inline-block;
-        padding: 4px 10px;
+    .service-image-wrapper img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+
+    .service-card:hover .service-image-wrapper img {
+        transform: scale(1.06);
+    }
+
+    .service-category-badge {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        padding: 6px 14px;
         border-radius: 20px;
         font-size: 11px;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.3px;
-        margin-bottom: 10px;
+        letter-spacing: 0.5px;
+        background: rgba(0,0,0,0.7);
+        color: #ffffff;
+        backdrop-filter: blur(4px);
     }
 
-    .cat-diagnostic { background: #e3f2fd; color: #1565c0; }
-    .cat-technical { background: #e8f5e9; color: #2e7d32; }
-    .cat-engine { background: #fff3e0; color: #e65100; }
-    .cat-chassis { background: #fce4ec; color: #c62828; }
-    .cat-transmission { background: #f3e5f5; color: #6a1b9a; }
-    .cat-tires { background: #e0f7fa; color: #00838f; }
-    .cat-body { background: #fff8e1; color: #ff8f00; }
-    .cat-electric { background: #efebe9; color: #4e342e; }
-
-    .service-card-header h3 {
-        font-size: 17px;
-        font-weight: 700;
-        color: var(--secondary);
-        margin-bottom: 6px;
-        line-height: 1.3;
-    }
-
+    /* Контент карточки */
     .service-card-body {
-        padding: 14px 20px;
+        padding: 20px 22px 18px;
         flex: 1;
+        display: flex;
+        flex-direction: column;
     }
 
-    .service-card-body p {
-        font-size: 14px;
-        color: var(--gray-500);
+    .service-card-body h3 {
+        font-size: 17px;
+        font-weight: 600;
+        color: #1a1a1a;
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+
+    .service-card-body .service-desc {
+        font-size: 13px;
+        color: #888;
         line-height: 1.6;
+        margin-bottom: 16px;
+        flex: 1;
         display: -webkit-box;
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
@@ -299,90 +321,81 @@ require_once 'includes/header.php';
     }
 
     .service-card-footer {
-        padding: 16px 20px;
-        border-top: 1px solid var(--gray-100);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: var(--gray-100);
+        padding: 16px 22px;
+        border-top: 1px solid #f0f0f0;
+        background: #fafafa;
     }
 
     .service-price {
-        font-size: 24px;
-        font-weight: 800;
-        color: var(--primary);
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a1a1a;
     }
 
-    .service-price small {
+    .service-price span {
         font-size: 14px;
-        font-weight: 400;
-        color: var(--gray-500);
+        font-weight: 500;
+        color: #888;
     }
 
     .service-duration {
-        font-size: 13px;
-        color: var(--gray-500);
+        font-size: 12px;
+        color: #999;
         display: flex;
         align-items: center;
         gap: 4px;
     }
 
-    .btn-sm {
-        padding: 8px 20px;
-        border-radius: 8px;
-        font-size: 14px;
+    .btn-service {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 18px;
+        border-radius: 6px;
+        font-size: 13px;
         font-weight: 600;
-        transition: var(--transition);
         text-decoration: none;
-        display: inline-block;
-    }
-
-    .btn-sm-primary {
-        background: var(--primary);
-        color: white;
+        transition: all 0.2s ease;
+        background: #cc3333;
+        color: #ffffff;
         border: none;
+        cursor: pointer;
     }
 
-    .btn-sm-primary:hover {
-        background: var(--primary-dark);
+    .btn-service:hover {
+        background: #b22d2d;
+        box-shadow: 0 4px 12px rgba(204, 51, 51, 0.3);
     }
 
-    /* ========== ПУСТОЙ РЕЗУЛЬТАТ ========== */
+    /* ========== ПУСТОЕ СОСТОЯНИЕ ========== */
     .empty-state {
+        grid-column: 1 / -1;
         text-align: center;
         padding: 60px 20px;
-        grid-column: 1 / -1;
-    }
-
-    .empty-state-icon {
-        font-size: 60px;
-        margin-bottom: 16px;
+        color: #999;
     }
 
     .empty-state h3 {
-        font-size: 20px;
-        color: var(--secondary);
-        margin-bottom: 8px;
-    }
-
-    .empty-state p {
-        color: var(--gray-500);
-        margin-bottom: 20px;
-    }
-
-    /* ========== СЧЁТЧИК НАЙДЕННЫХ УСЛУГ ========== */
-    .results-info {
-        font-size: 14px;
-        color: var(--gray-500);
-        margin-bottom: 16px;
-    }
-
-    .results-info strong {
-        color: var(--primary);
+        font-size: 18px;
+        color: #555;
+        margin: 12px 0 6px;
     }
 
     /* ========== АДАПТИВНОСТЬ ========== */
-    @media (max-width: 768px) {
+    @media (max-width: 1100px) {
+        .services-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 650px) {
+        .services-grid {
+            grid-template-columns: 1fr;
+        }
+
         .page-hero h1 {
             font-size: 26px;
         }
@@ -392,69 +405,51 @@ require_once 'includes/header.php';
             margin-top: -20px;
         }
 
-        .filters-top {
+        .filters-row {
             flex-direction: column;
         }
 
-        .search-wrapper {
-            width: 100%;
-        }
-
-        .sort-select {
-            width: 100%;
-        }
-
-        .services-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .service-card-header h3 {
-            font-size: 15px;
-        }
-
-        .service-price {
-            font-size: 20px;
+        .service-image-wrapper {
+            height: 200px;
         }
     }
 </style>
 
-<!-- ========== ЗАГОЛОВОК ========== -->
 <section class="page-hero">
     <div class="container">
         <h1>Услуги <span>и цены</span></h1>
-        <p>Полный каталог услуг автосервиса «Автокул СТО». Честные цены, профессиональный подход, гарантия на все виды работ.</p>
+        <p>Полный каталог услуг автосервиса «Автокул СТО». Честные цены, профессиональный подход и гарантия на все виды работ.</p>
     </div>
 </section>
 
-<!-- ========== ОСНОВНОЙ КОНТЕНТ ========== -->
 <section class="services-page">
 
-    <!-- Панель фильтров и поиска -->
+    <!-- Фильтры -->
     <div class="filters-panel">
-        <!-- Строка поиска и сортировка -->
         <form method="GET" action="/services.php" id="filterForm">
-            <div class="filters-top">
+            <div class="filters-row">
                 <div class="search-wrapper">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" name="search" placeholder="Поиск услуги..." 
-                           value="<?php echo htmlspecialchars($search_query); ?>"
-                           oninput="this.form.submit()">
+                    <span class="search-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                        </svg>
+                    </span>
+                    <input type="text" name="search" placeholder="Поиск услуги по названию или описанию..." 
+                           value="<?php echo htmlspecialchars($search_query); ?>" oninput="this.form.submit()">
                 </div>
                 <select name="sort" class="sort-select" onchange="this.form.submit()">
-                    <option value="price_asc" <?php echo $sort_by === 'price_asc' ? 'selected' : ''; ?>>⬆️ Цена: по возрастанию</option>
-                    <option value="price_desc" <?php echo $sort_by === 'price_desc' ? 'selected' : ''; ?>>⬇️ Цена: по убыванию</option>
-                    <option value="duration_asc" <?php echo $sort_by === 'duration_asc' ? 'selected' : ''; ?>>⏱ Длительность: по возрастанию</option>
-                    <option value="duration_desc" <?php echo $sort_by === 'duration_desc' ? 'selected' : ''; ?>>⏱ Длительность: по убыванию</option>
-                    <option value="name" <?php echo $sort_by === 'name' ? 'selected' : ''; ?>>🔤 По алфавиту</option>
+                    <option value="name" <?php echo $sort_by === 'name' ? 'selected' : ''; ?>>По названию (А-Я)</option>
+                    <option value="price_asc" <?php echo $sort_by === 'price_asc' ? 'selected' : ''; ?>>Цена: по возрастанию</option>
+                    <option value="price_desc" <?php echo $sort_by === 'price_desc' ? 'selected' : ''; ?>>Цена: по убыванию</option>
+                    <option value="duration" <?php echo $sort_by === 'duration' ? 'selected' : ''; ?>>По длительности</option>
                 </select>
             </div>
         </form>
 
-        <!-- Категории -->
         <div class="category-tabs">
             <a href="/services.php<?php echo !empty($search_query) ? '?search=' . urlencode($search_query) : ''; ?>" 
                class="category-tab <?php echo $active_category === 0 ? 'active' : ''; ?>">
-                🏷️ Все услуги
+                Все услуги
                 <span class="tab-count"><?php echo count($all_services); ?></span>
             </a>
             <?php foreach ($categories as $cat): 
@@ -462,12 +457,6 @@ require_once 'includes/header.php';
                 if ($cat_count === 0) continue;
                 $url = '/services.php?category=' . $cat['id'];
                 if (!empty($search_query)) $url .= '&search=' . urlencode($search_query);
-                $cat_classes = [
-                    1 => 'cat-diagnostic', 2 => 'cat-technical', 3 => 'cat-engine', 
-                    4 => 'cat-chassis', 5 => 'cat-transmission', 6 => 'cat-tires', 
-                    7 => 'cat-body', 8 => 'cat-electric'
-                ];
-                $cat_class = $cat_classes[$cat['id']] ?? '';
             ?>
                 <a href="<?php echo $url; ?>" class="category-tab <?php echo $active_category === (int)$cat['id'] ? 'active' : ''; ?>">
                     <?php echo htmlspecialchars($cat['name']); ?>
@@ -477,93 +466,51 @@ require_once 'includes/header.php';
         </div>
     </div>
 
-    <!-- Информация о результатах -->
-    <?php
-    $results_count = count($filtered_services);
-    $category_name = '';
-    if ($active_category > 0) {
-        foreach ($categories as $cat) {
-            if ($cat['id'] == $active_category) {
-                $category_name = $cat['name'];
-                break;
-            }
-        }
-    }
-    ?>
-    <div class="results-info">
-        Найдено услуг: <strong><?php echo $results_count; ?></strong>
-        <?php if ($category_name): ?>
-            в категории «<?php echo htmlspecialchars($category_name); ?>»
-        <?php endif; ?>
-        <?php if (!empty($search_query)): ?>
-            по запросу «<?php echo htmlspecialchars($search_query); ?>»
-        <?php endif; ?>
-    </div>
-
     <!-- Сетка услуг -->
-    <?php if ($results_count > 0): ?>
+    <?php if (count($filtered_services) > 0): ?>
         <div class="services-grid">
-            <?php 
-            $cat_classes_map = [
-                1 => 'cat-diagnostic', 2 => 'cat-technical', 3 => 'cat-engine', 
-                4 => 'cat-chassis', 5 => 'cat-transmission', 6 => 'cat-tires', 
-                7 => 'cat-body', 8 => 'cat-electric'
-            ];
-            foreach ($filtered_services as $svc): 
-                $badge_class = $cat_classes_map[$svc['category_id']] ?? '';
+            <?php foreach ($filtered_services as $svc): 
+                $image_url = getServiceImage($svc['image']);
             ?>
                 <div class="service-card">
-                    <div class="service-card-header">
-                        <span class="service-category-label <?php echo $badge_class; ?>">
-                            <?php echo htmlspecialchars($svc['category_name']); ?>
-                        </span>
-                        <h3><?php echo htmlspecialchars($svc['name']); ?></h3>
+                    <div class="service-image-wrapper">
+                        <img src="<?php echo htmlspecialchars($image_url); ?>" 
+                             alt="<?php echo htmlspecialchars($svc['name']); ?>"
+                             loading="lazy">
+                        <span class="service-category-badge"><?php echo htmlspecialchars($svc['category_name']); ?></span>
                     </div>
+                    
                     <div class="service-card-body">
-                        <p><?php echo htmlspecialchars($svc['description']); ?></p>
+                        <h3><?php echo htmlspecialchars($svc['name']); ?></h3>
+                        <p class="service-desc"><?php echo htmlspecialchars($svc['description'] ?: 'Подробное описание услуги уточняйте у менеджера.'); ?></p>
                     </div>
+                    
                     <div class="service-card-footer">
                         <div>
                             <div class="service-price">
-                                <?php echo number_format($svc['price'], 0, ',', ' '); ?> <small>₽</small>
+                                <?php echo number_format($svc['price'], 0, ',', ' '); ?> <span>₽</span>
                             </div>
                             <div class="service-duration">
-                                ⏱ <?php echo $svc['duration']; ?> минут
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                                <?php echo $svc['duration']; ?> мин.
                             </div>
                         </div>
-                        <a href="/appointment.php?service=<?php echo $svc['id']; ?>" class="btn-sm btn-sm-primary">
-                            Записаться
-                        </a>
+                        <a href="/appointment.php" class="btn-service">Записаться</a>
                     </div>
                 </div>
             <?php endforeach; ?>
         </div>
     <?php else: ?>
         <div class="empty-state">
-            <div class="empty-state-icon">🔍</div>
+            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.4;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            </div>
             <h3>Услуги не найдены</h3>
-            <p>По вашему запросу ничего не найдено. Попробуйте изменить параметры поиска или выбрать другую категорию.</p>
-            <a href="/services.php" class="btn btn-outline">Показать все услуги</a>
+            <p>Измените параметры поиска или выберите другую категорию</p>
         </div>
     <?php endif; ?>
 
 </section>
-
-<script>
-// Автосабмит формы при изменении поиска (уже через oninput)
-// Дополнительно: при клике на категорию сбрасываем поиск если он был
-document.querySelectorAll('.category-tab').forEach(tab => {
-    tab.addEventListener('click', function(e) {
-        const url = new URL(this.href);
-        // Оставляем текущий поиск если он есть
-        const currentSearch = document.querySelector('input[name="search"]').value;
-        if (currentSearch) {
-            url.searchParams.set('search', currentSearch);
-            this.href = url.toString();
-        }
-    });
-});
-</script>
 
 <?php
 require_once 'includes/footer.php';

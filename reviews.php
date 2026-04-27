@@ -3,6 +3,7 @@
 
 require_once 'includes/config.php';
 require_once 'includes/auth_check.php';
+require_once 'includes/avatar.php';
 
 $page_title = 'Отзывы клиентов — Автокул СТО';
 $pdo = getDBConnection();
@@ -569,7 +570,19 @@ require_once 'includes/header.php';
             ?>
                 <div class="review-card">
                     <div class="review-card-header">
-                        <div class="review-avatar"><?php echo htmlspecialchars($initials); ?></div>
+                        <<?php 
+// Получаем аватар автора отзыва
+$review_avatar = null;
+$review_author_name = $review['user_name'];
+$stmt_av = $pdo->prepare("SELECT avatar FROM users WHERE id = :uid");
+$stmt_av->execute(['uid' => $review['user_id']]);
+$review_avatar = $stmt_av->fetchColumn();
+?>
+<div style="width: 48px; height: 48px; flex-shrink: 0;">
+    <img src="<?php echo htmlspecialchars(getAvatarUrl($review_avatar)); ?>" 
+         alt="<?php echo htmlspecialchars($review_author_name); ?>"
+         style="width: 48px; height: 48px; object-fit: cover; border-radius: 50%;">
+</div>
                         <div class="review-user-info">
                             <h3><?php echo htmlspecialchars($review['user_name']); ?></h3>
                             <span class="review-date"><?php echo $review_date; ?></span>

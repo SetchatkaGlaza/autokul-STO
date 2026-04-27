@@ -3,6 +3,7 @@
 
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/auth_check.php';
+require_once __DIR__ . '/../includes/avatar.php';
 
 requireAuth('admin');
 
@@ -634,9 +635,9 @@ function buildUrl($params = []) {
                             <?php endif; ?>
                             
                             <div class="client-card-header">
-                                <div class="client-avatar">
-                                    <?php echo mb_substr($user['full_name'], 0, 1); ?>
-                                </div>
+                                <img src="<?php echo htmlspecialchars(getAvatarUrl($user['avatar'])); ?>" 
+     alt="<?php echo htmlspecialchars($user['full_name']); ?>"
+     style="width: 50px; height: 50px; object-fit: cover; border-radius: 50%; flex-shrink: 0;">
                                 <div class="client-info">
                                     <h3><?php echo htmlspecialchars($user['full_name']); ?></h3>
                                     <div class="client-email"><?php echo htmlspecialchars($user['email']); ?></div>

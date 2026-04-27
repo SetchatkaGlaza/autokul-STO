@@ -3,6 +3,7 @@
 
 require_once 'includes/config.php';
 require_once 'includes/auth_check.php';
+require_once 'includes/avatar.php';
 
 // Требуем авторизацию (любая роль)
 requireAuth();
@@ -31,6 +32,32 @@ if (!in_array($active_tab, $allowed_tabs)) {
 // ========== ОБРАБОТКА ФОРМ ==========
 $success_message = '';
 $error_message = '';
+
+// --- Загрузка аватара ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'upload_avatar') {
+    if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $result = saveAvatar($_FILES['avatar'], $user['id'], $pdo);
+        if ($result['success']) {
+            $_SESSION['user_avatar'] = $result['avatar_url'];
+            $success_message = $result['message'];
+        } else {
+            $error_message = $result['message'];
+        }
+    } else {
+        $error_message = 'Выберите файл для загрузки.';
+    }
+}
+
+// --- Удаление аватара ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_avatar') {
+    $result = deleteAvatar($user['id'], $pdo);
+    if ($result['success']) {
+        $_SESSION['user_avatar'] = null;
+        $success_message = $result['message'];
+    } else {
+        $error_message = $result['message'];
+    }
+}
 
 // --- Сохранение профиля ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_profile') {
@@ -649,7 +676,56 @@ require_once 'includes/header.php';
         if ($active_tab === 'profile'): 
         ?>
         <div class="profile-content-card">
-            <h2>👤 Редактирование профиля</h2>
+            <h2>Редактирование профиля</h2>
+
+<!-- Блок аватара -->
+<div style="display: flex; align-items: center; gap: 24px; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--gray-100); flex-wrap: wrap;">
+    
+    <!-- Текущий аватар -->
+    <div style="position: relative; flex-shrink: 0;">
+        <img src="<?php echo htmlspecialchars(getAvatarUrl($user['avatar'])); ?>" 
+             alt="<?php echo htmlspecialchars($user['full_name']); ?>"
+             style="width: 120px; height: 120px; object-fit: cover; border-radius: 50%; border: 3px solid var(--gray-200); box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+    </div>
+    
+    <!-- Формы загрузки и удаления -->
+    <div style="flex: 1; min-width: 200px;">
+        <h4 style="font-size: 16px; font-weight: 600; color: var(--secondary); margin-bottom: 6px;">Фотография профиля</h4>
+        <p style="font-size: 13px; color: var(--gray-500); margin-bottom: 14px; line-height: 1.6;">
+            Загрузите фотографию в формате JPG, PNG, WebP или GIF.<br>
+            Максимальный размер: <strong>5 МБ</strong>. Минимальное разрешение: <strong>100×100 пикселей</strong>.<br>
+            Изображение будет автоматически обрезано до квадрата по центру.
+        </p>
+        
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <!-- Форма загрузки -->
+            <form method="POST" action="/profile.php?tab=profile" enctype="multipart/form-data" id="avatarUploadForm" style="display: inline;">
+                <input type="hidden" name="action" value="upload_avatar">
+                <input type="file" name="avatar" id="avatarFileInput" accept="image/jpeg,image/png,image/webp,image/gif" 
+                       style="display: none;" onchange="document.getElementById('avatarUploadForm').submit();">
+                <button type="button" class="btn btn-primary" style="padding: 10px 20px; font-size: 14px;" 
+                        onclick="document.getElementById('avatarFileInput').click();">
+                    Загрузить фото
+                </button>
+            </form>
+            
+            <!-- Кнопка удаления -->
+            <?php if (!empty($user['avatar'])): ?>
+                <form method="POST" action="/profile.php?tab=profile" onsubmit="return confirm('Удалить текущую фотографию профиля? Будет установлено изображение по умолчанию.');" style="display: inline;">
+                    <input type="hidden" name="action" value="delete_avatar">
+                    <button type="submit" style="padding: 10px 20px; font-size: 14px; border: 1px solid var(--gray-300); border-radius: 6px; background: var(--white); cursor: pointer; transition: var(--transition); color: var(--gray-700);">
+                        Удалить фото
+                    </button>
+                </form>
+            <?php endif; ?>
+        </div>
+        
+        <!-- Индикатор загрузки -->
+        <div id="uploadProgress" style="display: none; margin-top: 8px; font-size: 13px; color: var(--gray-500);">
+            Загрузка изображения...
+        </div>
+    </div>
+</div>
             
             <form method="POST" action="/profile.php?tab=profile">
                 <input type="hidden" name="action" value="update_profile">
@@ -945,6 +1021,31 @@ require_once 'includes/header.php';
         <?php endif; ?>
     </div>
 </section>
+
+<script>
+// Показываем индикатор загрузки при выборе файла
+document.getElementById('avatarFileInput').addEventListener('change', function() {
+    if (this.files && this.files[0]) {
+        // Проверяем размер на клиенте
+        const maxSize = 5 * 1024 * 1024;
+        if (this.files[0].size > maxSize) {
+            alert('Размер файла превышает 5 МБ. Пожалуйста, выберите изображение меньшего размера.');
+            this.value = '';
+            return;
+        }
+        
+        // Проверяем тип на клиенте
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!allowedTypes.includes(this.files[0].type)) {
+            alert('Недопустимый формат файла. Разрешены: JPG, PNG, WebP, GIF.');
+            this.value = '';
+            return;
+        }
+        
+        document.getElementById('uploadProgress').style.display = 'block';
+    }
+});
+</script>
 
 <?php
 require_once 'includes/footer.php';
