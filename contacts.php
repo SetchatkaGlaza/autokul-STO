@@ -24,32 +24,28 @@ $days_of_week = [
     7 => 'Воскресенье'
 ];
 
-// Формируем рабочие и выходные дни
+// Формируем рабочие дни (СТО работает ежедневно)
 $work_days = [];
-$weekend_days = [];
+$schedule_by_day = [];
 
 foreach ($schedule as $day) {
-    $day_name = $days_of_week[$day['day_of_week']] ?? 'День ' . $day['day_of_week'];
-    $time_str = date('H:i', strtotime($day['start_time'])) . ' – ' . date('H:i', strtotime($day['end_time']));
+    $schedule_by_day[(int)$day['day_of_week']] = $day;
+}
+
+for ($day_num = 1; $day_num <= 7; $day_num++) {
+    $day_data = $schedule_by_day[$day_num] ?? [
+        'start_time' => '09:00:00',
+        'end_time' => '18:00:00'
+    ];
+
+    $day_name = $days_of_week[$day_num] ?? 'День ' . $day_num;
+    $time_str = date('H:i', strtotime($day_data['start_time'])) . ' – ' . date('H:i', strtotime($day_data['end_time']));
+
     $work_days[] = [
         'name' => $day_name,
         'time' => $time_str,
-        'is_today' => date('N') == $day['day_of_week']
+        'is_today' => date('N') == $day_num
     ];
-}
-
-// Определяем выходные дни (которых нет в расписании)
-for ($i = 1; $i <= 7; $i++) {
-    $found = false;
-    foreach ($schedule as $day) {
-        if ($day['day_of_week'] == $i) {
-            $found = true;
-            break;
-        }
-    }
-    if (!$found) {
-        $weekend_days[] = $days_of_week[$i] ?? 'День ' . $i;
-    }
 }
 
 // Обработка формы обратной связи
@@ -301,18 +297,6 @@ require_once 'includes/header.php';
         color: var(--gray-700);
     }
 
-    .weekend-note {
-        margin-top: 12px;
-        padding: 12px 16px;
-        background: #fff3cd;
-        border-radius: 10px;
-        font-size: 14px;
-        color: #856404;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
     /* ========== КАРТА ========== */
     .map-container {
         border-radius: 14px;
@@ -556,7 +540,7 @@ require_once 'includes/header.php';
 <section class="page-hero">
     <div class="container">
         <h1>Контакты <span>автосервиса</span></h1>
-        <p>Ждём вас по адресу: г. Тюмень, ул. Автомобильная, 15. Работаем с понедельника по пятницу.</p>
+        <p>Ждём вас по адресу: г. Вологда, Кирпичная ул., 48А. Работаем в удобное для вас время по предварительной записи.</p>
     </div>
 </section>
 
@@ -581,7 +565,7 @@ require_once 'includes/header.php';
                         <div class="contact-info-text">
                             <h3>Телефон</h3>
                             <a href="tel:+79001234567">+7 (900) 123-45-67</a>
-                            <p style="font-size: 12px; color: var(--gray-500);">Пн–Пт: с 08:00 до 19:00</p>
+                            <p style="font-size: 12px; color: var(--gray-500);">Ежедневно: с 09:00 до 18:00</p>
                         </div>
                     </div>
 
@@ -590,7 +574,7 @@ require_once 'includes/header.php';
                         <div class="contact-info-text">
                             <h3>Email</h3>
                             <a href="mailto:info@autokul.ru">info@autokul.ru</a>
-                            <p style="font-size: 12px; color: var(--gray-500);">Отвечаем в течение рабочего дня</p>
+                            <p style="font-size: 12px; color: var(--gray-500);">Отвечаем ежедневно в рабочее время</p>
                         </div>
                     </div>
 
@@ -598,7 +582,7 @@ require_once 'includes/header.php';
                         <div class="contact-icon-box">📍</div>
                         <div class="contact-info-text">
                             <h3>Адрес</h3>
-                            <p>г. Тюмень, ул. Автомобильная, 15</p>
+                            <p>г. Вологда, Кирпичная ул., 48А</p>
                             <p style="font-size: 12px; color: var(--gray-500);">Ориентир: рядом с ТЦ "Автомир"</p>
                         </div>
                     </div>
@@ -636,12 +620,6 @@ require_once 'includes/header.php';
                         </div>
                     <?php endforeach; ?>
                 </div>
-
-                <?php if (!empty($weekend_days)): ?>
-                    <div class="weekend-note">
-                        📅 <strong>Выходные дни:</strong> <?php echo implode(', ', $weekend_days); ?>
-                    </div>
-                <?php endif; ?>
             </div>
 
             <!-- Схема проезда -->
@@ -654,15 +632,15 @@ require_once 'includes/header.php';
                 <div class="directions-list">
                     <div class="direction-item">
                         <span class="direction-icon">🚌</span>
-                        <span>Автобус № 12, 25, 47 — остановка «Автомобильная улица» (100 м от сервиса)</span>
+                        <span>Городские маршруты до остановки «Кирпичная улица», далее 2–3 минуты пешком</span>
                     </div>
                     <div class="direction-item">
                         <span class="direction-icon">🚇</span>
-                        <span>Ближайшая станция метро: «Автовокзал» — 15 минут пешком</span>
+                        <span>На автомобиле удобно подъехать по Кирпичной улице, ориентир — дом 48А</span>
                     </div>
                     <div class="direction-item">
                         <span class="direction-icon">🅿️</span>
-                        <span>Бесплатная парковка на территории автосервиса (на 10 машиномест)</span>
+                        <span>Есть парковка для клиентов рядом с сервисом</span>
                     </div>
                 </div>
             </div>
@@ -673,17 +651,19 @@ require_once 'includes/header.php';
         <div>
             <!-- Карта -->
             <div class="map-container">
-                <div class="map-placeholder">
-                    <div class="map-marker"></div>
-                    <div class="map-text">
-                        <strong>Автокул СТО</strong><br>
-                        г. Тюмень, ул. Автомобильная, 15
-                    </div>
-                    <a href="https://yandex.ru/maps/?text=Тюмень,+ул.+Автомобильная,+15" 
-                       target="_blank" rel="noopener" class="map-link">
-                        🗺️ Открыть в Яндекс.Картах
-                    </a>
-                </div>
+                <iframe
+                    src="https://yandex.ru/map-widget/v1/?text=%D0%92%D0%BE%D0%BB%D0%BE%D0%B3%D0%B4%D0%B0%2C%20%D0%9A%D0%B8%D1%80%D0%BF%D0%B8%D1%87%D0%BD%D0%B0%D1%8F%20%D1%83%D0%BB.%2C%2048%D0%90&z=16"
+                    width="100%"
+                    height="100%"
+                    frameborder="0"
+                    allowfullscreen="true"
+                    style="border:0; border-radius: 14px;"
+                    title="Карта проезда к Автокул СТО"
+                    loading="lazy"></iframe>
+                <a href="https://yandex.ru/maps/?text=%D0%92%D0%BE%D0%BB%D0%BE%D0%B3%D0%B4%D0%B0,+%D0%9A%D0%B8%D1%80%D0%BF%D0%B8%D1%87%D0%BD%D0%B0%D1%8F+%D1%83%D0%BB.,+48%D0%90"
+                   target="_blank" rel="noopener" class="map-link" style="margin-top: 12px; display: inline-block;">
+                    🗺️ Открыть в Яндекс.Картах
+                </a>
             </div>
         </div>
 

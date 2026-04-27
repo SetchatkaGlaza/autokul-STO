@@ -308,6 +308,14 @@ img {
     font-size: 80px;
     border: 2px dashed rgba(255, 255, 255, 0.2);
     margin: 0 auto;
+    overflow: hidden;
+}
+
+.hero-image-placeholder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 14px;
 }
 
 /* ==========================================

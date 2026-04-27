@@ -66,7 +66,7 @@ function getServiceImage($image_path) {
     if (!empty($image_path) && file_exists(__DIR__ . '/' . $image_path)) {
         return '/' . $image_path;
     }
-    return '/uploads/services/default-service.png';
+    return '/uploads/avatars/default-service.png';
 }
 
 require_once 'includes/header.php';

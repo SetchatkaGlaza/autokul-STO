@@ -14,8 +14,8 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Автокул СТО — профессиональный ремонт и техническое обслуживание автомобилей в Тюмени. Онлайн-запись, диагностика, ремонт.">
-    <meta name="keywords" content="автосервис, СТО, ремонт автомобилей, техобслуживание, диагностика, Тюмень">
+    <meta name="description" content="Автокул СТО — профессиональный ремонт и техническое обслуживание автомобилей в Вологде. Онлайн-запись, диагностика, ремонт.">
+    <meta name="keywords" content="автосервис, СТО, ремонт автомобилей, техобслуживание, диагностика, Вологда">
     <title><?php echo $page_title ?? 'Автокул СТО — Ремонт и обслуживание автомобилей'; ?></title>
     <link rel="stylesheet" href="/assets/css/style.css">
     <style>
@@ -422,7 +422,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 <div class="header-logo-icon"></div>
                 <div class="header-logo-text">
                     <span class="header-logo-name">Автокул <span>СТО</span></span>
-                    <span class="header-logo-sub">Автосервис в Тюмени</span>
+                    <span class="header-logo-sub">Автосервис в Вологде</span>
                 </div>
             </a>
 

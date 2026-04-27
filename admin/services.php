@@ -1011,7 +1011,7 @@ $services = $stmt->fetchAll();
                 <div class="form-group">
                     <label>Изображение услуги</label>
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                        <img id="serviceImagePreview" src="/uploads/services/default-service.png" 
+                        <img id="serviceImagePreview" src="/uploads/avatars/default-service.png" 
                              alt="Превью" 
                              style="width: 160px; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid #e0e0e0;">
                         <div>
@@ -1060,7 +1060,7 @@ $services = $stmt->fetchAll();
         
         form.reset();
         document.getElementById('serviceId').value = '0';
-        document.getElementById('serviceImagePreview').src = '/uploads/services/default-service.png';
+        document.getElementById('serviceImagePreview').src = '/uploads/avatars/default-service.png';
         
         if (serviceId) {
             title.textContent = 'Редактировать услугу';
@@ -1082,7 +1082,7 @@ $services = $stmt->fetchAll();
                     if (data.image) {
                         preview.src = '/' + data.image;
                     } else {
-                        preview.src = '/uploads/services/default-service.png';
+                        preview.src = '/uploads/avatars/default-service.png';
                     }
                 })
                 .catch(function(err) {

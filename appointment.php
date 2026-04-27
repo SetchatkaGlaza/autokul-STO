@@ -128,9 +128,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $day_of_week = date('N', strtotime($appointment_date));
         $stmt = $pdo->prepare("SELECT id FROM work_schedule WHERE day_of_week = :day");
         $stmt->execute(['day' => $day_of_week]);
-        if (!$stmt->fetch()) {
-            $form_errors['date'] = 'В этот день автосервис не работает. Выберите будний день (Пн-Пт)';
-        }
+        // СТО работает ежедневно: если отдельной записи в таблице нет,
+        // используем стандартный график и не блокируем выбор даты.
     }
     
     if (empty($appointment_time)) {
@@ -825,7 +824,7 @@ require_once 'includes/header.php';
                 <?php if (isset($form_errors['date'])): ?>
                     <p style="color: #dc3545; font-size: 13px; margin-top: 4px;"><?php echo $form_errors['date']; ?></p>
                 <?php endif; ?>
-                <small style="color: var(--gray-500);">Запись доступна на будние дни в течение 30 дней</small>
+                <small style="color: var(--gray-500);">Запись доступна ежедневно в течение 30 дней</small>
             </div>
 
             <div id="timeSlotsContainer" style="display: none;">

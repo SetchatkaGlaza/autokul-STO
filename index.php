@@ -5,7 +5,7 @@
 require_once 'includes/config.php';
 
 // Заголовок страницы
-$page_title = 'Автокул СТО — Ремонт и обслуживание автомобилей в Тюмени';
+$page_title = 'Автокул СТО — Ремонт и обслуживание автомобилей в Вологде';
 
 // Получаем соединение с БД
 $pdo = getDBConnection();
@@ -29,7 +29,7 @@ require_once 'includes/header.php';
     <div class="container">
         <div class="hero-inner">
             <div class="hero-content">
-                <h1>Профессиональный <span>автосервис</span> в Тюмени</h1>
+                <h1>Профессиональный <span>автосервис</span> в Вологде</h1>
                 <p>
                     Ремонт любой сложности, техническое обслуживание и диагностика 
                     автомобилей. Запишитесь онлайн за 1 минуту и получите 
@@ -42,7 +42,7 @@ require_once 'includes/header.php';
             </div>
             <div class="hero-image">
                 <div class="hero-image-placeholder">
-                    🚗
+                    <img src="/uploads/services/service_1777329970_99ffa6b1e66181e5.jpg" alt="Автокул СТО в Вологде" loading="eager">
                 </div>
             </div>
         </div>
@@ -146,13 +146,13 @@ require_once 'includes/header.php';
     <div class="container">
         <div class="section-header">
             <h2>Наши контакты</h2>
-            <p style="color: #aaa;">Ждём вас по будням с 09:00 до 18:00</p>
+            <p style="color: #aaa;">Ждём вас ежедневно с 09:00 до 18:00</p>
         </div>
         <div class="contact-info-grid">
             <div class="contact-info-item">
                 <div class="contact-info-icon">📍</div>
                 <h3>Адрес</h3>
-                <p>г. Тюмень, ул. Автомобильная, 15</p>
+                <p>г. Вологда, Кирпичная ул., 48А</p>
             </div>
             <div class="contact-info-item">
                 <div class="contact-info-icon">📞</div>
@@ -167,7 +167,7 @@ require_once 'includes/header.php';
             <div class="contact-info-item">
                 <div class="contact-info-icon">🕐</div>
                 <h3>Режим работы</h3>
-                <p>Пн–Пт: 09:00 – 18:00</p>
+                <p>Ежедневно: 09:00 – 18:00</p>
             </div>
         </div>
     </div>
