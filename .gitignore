@@ -1,0 +1,29 @@
+# Системные файлы
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Локальный сервер
+OpenServer/
+.htaccess
+
+# Файлы разработки
+test_db.php
+*.log
+
+# Временные файлы
+temp/
+uploads/temp/
+
+# Пароли и конфиденциальные данные
+includes/config.php
+
+# Зависимости (если будут)
+vendor/
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
