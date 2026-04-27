@@ -609,15 +609,32 @@ $services = $stmt->fetchAll();
             background: white;
             border-radius: 12px;
             border: 1px solid #e0e0e0;
-            padding: 20px;
+            padding: 16px;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
         }
 
         .service-card-admin:hover {
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            box-shadow: 0 10px 26px rgba(0,0,0,0.12);
             border-color: #d32f2f;
+            transform: translateY(-3px);
+        }
+
+        .service-thumb {
+            width: 100%;
+            height: 150px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            background: #f1f1f1;
+        }
+
+        .service-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
         }
 
         .service-card-admin.inactive {
@@ -633,7 +650,7 @@ $services = $stmt->fetchAll();
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
 
         .service-category-badge {
@@ -937,6 +954,11 @@ $services = $stmt->fetchAll();
 
                             <div class="service-card-header">
                                 <span class="service-category-badge"><?php echo htmlspecialchars($svc['category_name']); ?></span>
+                            </div>
+                            <div class="service-thumb">
+                                <img src="<?php echo (!empty($svc['image']) && file_exists(__DIR__ . '/../' . $svc['image'])) ? '/' . htmlspecialchars($svc['image']) : '/uploads/avatars/default-service.png'; ?>"
+                                     alt="<?php echo htmlspecialchars($svc['name']); ?>"
+                                     loading="lazy">
                             </div>
                             <h3><?php echo htmlspecialchars($svc['name']); ?></h3>
                             <p class="description"><?php echo htmlspecialchars($svc['description'] ?: 'Без описания'); ?></p>

@@ -9,8 +9,12 @@
  * @return string URL аватара
  */
 function getAvatarUrl($avatar_path = null) {
-    if (!empty($avatar_path) && file_exists(__DIR__ . '/../' . $avatar_path)) {
-        return '/' . $avatar_path;
+    if (!empty($avatar_path)) {
+        // Поддержка случаев, когда в сессии/БД уже лежит путь с ведущим "/"
+        $normalized = ltrim($avatar_path, '/');
+        if (file_exists(__DIR__ . '/../' . $normalized)) {
+            return '/' . $normalized;
+        }
     }
     return '/uploads/avatars/default.png';
 }
@@ -147,7 +151,7 @@ function validateAvatarUpload($file) {
  * @param array $file Массив $_FILES['avatar']
  * @param int $user_id ID пользователя
  * @param PDO $pdo Соединение с БД
- * @return array [success => bool, message => string, avatar_url => string|null]
+ * @return array [success => bool, message => string, avatar_url => string|null, avatar_path => string|null]
  */
 function saveAvatar($file, $user_id, $pdo) {
     // Валидация
@@ -156,7 +160,8 @@ function saveAvatar($file, $user_id, $pdo) {
         return [
             'success' => false,
             'message' => $validation['message'],
-            'avatar_url' => null
+            'avatar_url' => null,
+            'avatar_path' => null
         ];
     }
     
@@ -198,7 +203,8 @@ function saveAvatar($file, $user_id, $pdo) {
             return [
                 'success' => false,
                 'message' => 'Не удалось обработать изображение.',
-                'avatar_url' => null
+                'avatar_url' => null,
+                'avatar_path' => null
             ];
         }
         
@@ -271,7 +277,8 @@ function saveAvatar($file, $user_id, $pdo) {
         return [
             'success' => true,
             'message' => 'Аватар успешно обновлён.',
-            'avatar_url' => '/' . $relative_path
+            'avatar_url' => '/' . $relative_path,
+            'avatar_path' => $relative_path
         ];
         
     } catch (Exception $e) {
@@ -279,7 +286,8 @@ function saveAvatar($file, $user_id, $pdo) {
         return [
             'success' => false,
             'message' => 'Ошибка при сохранении аватара. Попробуйте позже.',
-            'avatar_url' => null
+            'avatar_url' => null,
+            'avatar_path' => null
         ];
     }
 }

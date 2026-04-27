@@ -12,7 +12,7 @@ $pdo = getDBConnection();
 
 // Загружаем популярные услуги (первые 6 активных) с категориями
 $services = $pdo->query("
-    SELECT s.name, s.description, s.price, s.duration, c.name AS category_name 
+    SELECT s.name, s.description, s.price, s.duration, s.image, c.name AS category_name 
     FROM services s 
     JOIN categories c ON s.category_id = c.id 
     WHERE s.is_active = 1 
@@ -53,29 +53,29 @@ require_once 'includes/header.php';
 <section class="advantages">
     <div class="container">
         <div class="section-header">
-            <h2>Почему выбирают нас</h2>
-            <p>Более 10 лет мы делаем автомобили наших клиентов надёжными и безопасными</p>
+            <h2>Почему выбирают Автокул СТО</h2>
+            <p>Собрали сервис, в котором важны прозрачность, скорость и предсказуемый результат для клиента</p>
         </div>
         <div class="advantages-grid">
             <div class="advantage-card">
-                <div class="advantage-icon">🔧</div>
-                <h3>Опытные мастера</h3>
-                <p>Квалифицированные специалисты с опытом работы от 5 лет</p>
+                <div class="advantage-icon">🧰</div>
+                <h3>Профильные мастера</h3>
+                <p>Работаем с чёткими регламентами: диагностика, согласование и только потом ремонт</p>
             </div>
             <div class="advantage-card">
-                <div class="advantage-icon">✅</div>
-                <h3>Гарантия качества</h3>
-                <p>Гарантия на все виды работ и установленные запчасти</p>
+                <div class="advantage-icon">🧾</div>
+                <h3>Прозрачная смета</h3>
+                <p>Фиксируем стоимость до начала работ и объясняем, из чего складывается итоговая цена</p>
             </div>
             <div class="advantage-card">
-                <div class="advantage-icon">💰</div>
-                <h3>Честные цены</h3>
-                <p>Фиксированная стоимость, без скрытых наценок и доплат</p>
+                <div class="advantage-icon">⏱️</div>
+                <h3>Пунктуальные сроки</h3>
+                <p>Планируем загрузку постов заранее и держим вас в курсе статуса на каждом этапе</p>
             </div>
             <div class="advantage-card">
-                <div class="advantage-icon">📅</div>
-                <h3>Удобная запись</h3>
-                <p>Онлайн-запись 24/7, без звонков и ожидания на линии</p>
+                <div class="advantage-icon">🛡️</div>
+                <h3>Гарантия и поддержка</h3>
+                <p>После обслуживания остаёмся на связи и помогаем по вопросам эксплуатации</p>
             </div>
         </div>
     </div>
@@ -93,6 +93,11 @@ require_once 'includes/header.php';
         <div class="services-grid">
             <?php foreach ($services as $service): ?>
             <div class="service-card">
+                <div class="service-preview-image">
+                    <img src="<?php echo !empty($service['image']) && file_exists(__DIR__ . '/' . $service['image']) ? '/' . htmlspecialchars($service['image']) : '/uploads/avatars/default-service.png'; ?>"
+                         alt="<?php echo htmlspecialchars($service['name']); ?>"
+                         loading="lazy">
+                </div>
                 <span class="service-category-badge">
                     <?php echo htmlspecialchars($service['category_name']); ?>
                 </span>
@@ -136,38 +141,6 @@ require_once 'includes/header.php';
                 <div class="step-number">3</div>
                 <h3>Приезжайте</h3>
                 <p>Приезжайте в назначенное время и доверьте авто профессионалам</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- ========== КОНТАКТЫ (кратко) ========== -->
-<section class="contact-brief">
-    <div class="container">
-        <div class="section-header">
-            <h2>Наши контакты</h2>
-            <p style="color: #aaa;">Ждём вас ежедневно с 09:00 до 18:00</p>
-        </div>
-        <div class="contact-info-grid">
-            <div class="contact-info-item">
-                <div class="contact-info-icon">📍</div>
-                <h3>Адрес</h3>
-                <p>г. Вологда, Кирпичная ул., 48А</p>
-            </div>
-            <div class="contact-info-item">
-                <div class="contact-info-icon">📞</div>
-                <h3>Телефон</h3>
-                <p><a href="tel:+79001234567">+7 (900) 123-45-67</a></p>
-            </div>
-            <div class="contact-info-item">
-                <div class="contact-info-icon">✉️</div>
-                <h3>Email</h3>
-                <p><a href="mailto:info@autokul.ru">info@autokul.ru</a></p>
-            </div>
-            <div class="contact-info-item">
-                <div class="contact-info-icon">🕐</div>
-                <h3>Режим работы</h3>
-                <p>Ежедневно: 09:00 – 18:00</p>
             </div>
         </div>
     </div>

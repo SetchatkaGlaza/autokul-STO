@@ -12,7 +12,7 @@ $page_title = 'Личный кабинет — Автокул СТО';
 $pdo = getDBConnection();
 
 // Получаем полные данные пользователя из БД
-$stmt = $pdo->prepare("SELECT id, full_name, email, phone, role, created_at FROM users WHERE id = :id");
+$stmt = $pdo->prepare("SELECT id, full_name, email, phone, role, created_at, avatar, password FROM users WHERE id = :id");
 $stmt->execute(['id' => $_SESSION['user_id']]);
 $user = $stmt->fetch();
 
@@ -38,8 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_NO_FILE) {
         $result = saveAvatar($_FILES['avatar'], $user['id'], $pdo);
         if ($result['success']) {
-            $_SESSION['user_avatar'] = $result['avatar_url'];
+            $_SESSION['user_avatar'] = $result['avatar_path'];
             $success_message = $result['message'];
+            $user['avatar'] = $result['avatar_path'];
         } else {
             $error_message = $result['message'];
         }
@@ -330,6 +331,14 @@ require_once 'includes/header.php';
         margin: 0 auto 12px;
         border: 3px solid rgba(255,255,255,0.3);
     }
+
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+        display: block;
+    }
     
     .profile-user-info h3 {
         font-size: 18px;
@@ -402,6 +411,48 @@ require_once 'includes/header.php';
         display: flex;
         align-items: center;
         gap: 10px;
+    }
+
+    .review-card {
+        background: #fafafa;
+        border: 1px solid var(--gray-200);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+
+    .review-card-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
+    .review-meta {
+        font-size: 12px;
+        color: var(--gray-500);
+    }
+
+    .review-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 20px;
+    }
+
+    .review-status.approved {
+        color: #1e7e34;
+        background: #eaf7ee;
+    }
+
+    .review-status.pending {
+        color: #8a6d3b;
+        background: #fff8e1;
     }
     
     /* Статистика */
@@ -617,7 +668,8 @@ require_once 'includes/header.php';
         <div class="profile-sidebar-card">
             <div class="profile-user-info">
                 <div class="profile-avatar">
-                    <?php echo mb_substr($user['full_name'], 0, 1); ?>
+                    <img src="<?php echo htmlspecialchars(getAvatarUrl($user['avatar'] ?? null)); ?>"
+                         alt="<?php echo htmlspecialchars($user['full_name']); ?>">
                 </div>
                 <h3><?php echo htmlspecialchars($user['full_name']); ?></h3>
                 <?php
@@ -702,7 +754,7 @@ require_once 'includes/header.php';
             <form method="POST" action="/profile.php?tab=profile" enctype="multipart/form-data" id="avatarUploadForm" style="display: inline;">
                 <input type="hidden" name="action" value="upload_avatar">
                 <input type="file" name="avatar" id="avatarFileInput" accept="image/jpeg,image/png,image/webp,image/gif" 
-                       style="display: none;" onchange="document.getElementById('avatarUploadForm').submit();">
+                       style="display: none;">
                 <button type="button" class="btn btn-primary" style="padding: 10px 20px; font-size: 14px;" 
                         onclick="document.getElementById('avatarFileInput').click();">
                     Загрузить фото
@@ -949,12 +1001,12 @@ require_once 'includes/header.php';
                 </p>
             <?php else: ?>
                 <?php foreach ($reviews as $review): ?>
-                    <div style="background: var(--gray-100); border-radius: 10px; padding: 16px; margin-bottom: 12px;">
-                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                    <div class="review-card">
+                        <div class="review-card-header">
                             <span class="stars-display">
                                 <?php echo str_repeat('★', $review['rating']) . str_repeat('☆', 5 - $review['rating']); ?>
                             </span>
-                            <span style="font-size: 12px; color: var(--gray-500);">
+                            <span class="review-meta">
                                 <?php echo date('d.m.Y H:i', strtotime($review['created_at'])); ?>
                                 <?php if ($review['service_name']): ?>
                                     · <?php echo htmlspecialchars($review['service_name']); ?>
@@ -964,9 +1016,9 @@ require_once 'includes/header.php';
                         <p style="font-size: 14px; color: var(--gray-700);"><?php echo nl2br(htmlspecialchars($review['text'])); ?></p>
                         <div style="margin-top: 8px;">
                             <?php if ($review['is_approved']): ?>
-                                <span style="color: #28a745; font-size: 12px;">✅ Опубликован</span>
+                                <span class="review-status approved">✅ Опубликован</span>
                             <?php else: ?>
-                                <span style="color: var(--warning); font-size: 12px;">⏳ На модерации</span>
+                                <span class="review-status pending">⏳ На модерации</span>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -1024,27 +1076,37 @@ require_once 'includes/header.php';
 
 <script>
 // Показываем индикатор загрузки при выборе файла
-document.getElementById('avatarFileInput').addEventListener('change', function() {
-    if (this.files && this.files[0]) {
-        // Проверяем размер на клиенте
-        const maxSize = 5 * 1024 * 1024;
-        if (this.files[0].size > maxSize) {
-            alert('Размер файла превышает 5 МБ. Пожалуйста, выберите изображение меньшего размера.');
-            this.value = '';
-            return;
+const avatarFileInput = document.getElementById('avatarFileInput');
+if (avatarFileInput) {
+    avatarFileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            // Проверяем размер на клиенте
+            const maxSize = 5 * 1024 * 1024;
+            if (this.files[0].size > maxSize) {
+                alert('Размер файла превышает 5 МБ. Пожалуйста, выберите изображение меньшего размера.');
+                this.value = '';
+                return;
+            }
+            
+            // Проверяем тип на клиенте
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+            if (!allowedTypes.includes(this.files[0].type)) {
+                alert('Недопустимый формат файла. Разрешены: JPG, PNG, WebP, GIF.');
+                this.value = '';
+                return;
+            }
+
+            const previewTarget = document.querySelector('.profile-avatar img');
+            if (previewTarget) {
+                previewTarget.src = URL.createObjectURL(this.files[0]);
+            }
+            
+            const uploadProgress = document.getElementById('uploadProgress');
+            if (uploadProgress) uploadProgress.style.display = 'block';
+            document.getElementById('avatarUploadForm').submit();
         }
-        
-        // Проверяем тип на клиенте
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-        if (!allowedTypes.includes(this.files[0].type)) {
-            alert('Недопустимый формат файла. Разрешены: JPG, PNG, WebP, GIF.');
-            this.value = '';
-            return;
-        }
-        
-        document.getElementById('uploadProgress').style.display = 'block';
-    }
-});
+    });
+}
 </script>
 
 <?php
