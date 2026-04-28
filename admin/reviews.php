@@ -9,6 +9,23 @@ requireAuth('admin');
 $page_title = 'Модерация отзывов — Панель управления';
 $pdo = getDBConnection();
 
+function getReviewsStats(PDO $pdo): array {
+    $stats = $pdo->query("
+        SELECT 
+            COUNT(*) AS total,
+            SUM(CASE WHEN is_approved = 1 THEN 1 ELSE 0 END) AS approved,
+            SUM(CASE WHEN is_approved = 0 THEN 1 ELSE 0 END) AS pending,
+            ROUND(AVG(CASE WHEN is_approved = 1 THEN rating END), 1) AS avg_rating
+        FROM reviews
+    ")->fetch();
+    return [
+        'total' => (int)($stats['total'] ?? 0),
+        'approved' => (int)($stats['approved'] ?? 0),
+        'pending' => (int)($stats['pending'] ?? 0),
+        'avg_rating' => $stats['avg_rating'] !== null ? (float)$stats['avg_rating'] : null
+    ];
+}
+
 // ============================================================
 // AJAX-ОБРАБОТЧИКИ
 // ============================================================
@@ -27,7 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
             echo json_encode([
                 'success' => true, 
                 'is_approved' => (bool)$is_approved,
-                'message' => $is_approved ? 'Отзыв одобрен' : 'Отзыв отклонён'
+                'message' => $is_approved ? 'Отзыв одобрен' : 'Отзыв отклонён',
+                'stats' => getReviewsStats($pdo)
             ], JSON_UNESCAPED_UNICODE);
             exit;
         }
@@ -54,7 +72,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
             header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['success' => true, 'message' => 'Отзыв удалён']);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Отзыв удалён',
+                'stats' => getReviewsStats($pdo)
+            ]);
             exit;
         }
         
@@ -575,9 +597,9 @@ function buildUrl($params = []) {
                 <a href="/admin/categories.php">📂 Категории</a>
                 <a href="/admin/reviews.php" class="active">
                     ⭐ Отзывы
-                    <?php if ($stats['pending'] > 0): ?>
-                        <span class="nav-badge"><?php echo $stats['pending']; ?></span>
-                    <?php endif; ?>
+                    <span class="nav-badge" id="pendingNavBadge" style="<?php echo $stats['pending'] > 0 ? '' : 'display:none;'; ?>">
+                        <?php echo $stats['pending']; ?>
+                    </span>
                 </a>
                 <a href="/admin/users.php">👥 Клиенты</a>
                 <hr class="sidebar-divider">
@@ -595,19 +617,19 @@ function buildUrl($params = []) {
             <!-- Статистика -->
             <div class="stats-row">
                 <div class="stat-card">
-                    <div class="stat-value"><?php echo $stats['total']; ?></div>
+                    <div class="stat-value" id="statTotal"><?php echo $stats['total']; ?></div>
                     <div class="stat-label">Всего отзывов</div>
                 </div>
                 <div class="stat-card warning">
-                    <div class="stat-value"><?php echo $stats['pending']; ?></div>
+                    <div class="stat-value" id="statPending"><?php echo $stats['pending']; ?></div>
                     <div class="stat-label">На модерации</div>
                 </div>
                 <div class="stat-card success">
-                    <div class="stat-value"><?php echo $stats['approved']; ?></div>
+                    <div class="stat-value" id="statApproved"><?php echo $stats['approved']; ?></div>
                     <div class="stat-label">Одобрено</div>
                 </div>
                 <div class="stat-card primary">
-                    <div class="stat-value"><?php echo $stats['avg_rating'] ? number_format($stats['avg_rating'], 1) : '—'; ?></div>
+                    <div class="stat-value" id="statAvgRating"><?php echo $stats['avg_rating'] ? number_format($stats['avg_rating'], 1) : '—'; ?></div>
                     <div class="stat-label">Средний рейтинг</div>
                 </div>
             </div>
@@ -615,13 +637,13 @@ function buildUrl($params = []) {
             <!-- Вкладки -->
             <div class="status-tabs">
                 <a href="<?php echo buildUrl(['status' => 'all']); ?>" class="status-tab <?php echo $filter_status === 'all' ? 'active' : ''; ?>">
-                    Все <span class="count"><?php echo $stats['total']; ?></span>
+                    Все <span class="count" id="tabCountAll"><?php echo $stats['total']; ?></span>
                 </a>
                 <a href="<?php echo buildUrl(['status' => 'pending']); ?>" class="status-tab <?php echo $filter_status === 'pending' ? 'active' : ''; ?>">
-                    ⏳ На модерации <span class="count"><?php echo $stats['pending']; ?></span>
+                    ⏳ На модерации <span class="count" id="tabCountPending"><?php echo $stats['pending']; ?></span>
                 </a>
                 <a href="<?php echo buildUrl(['status' => 'approved']); ?>" class="status-tab <?php echo $filter_status === 'approved' ? 'active' : ''; ?>">
-                    ✅ Одобрены <span class="count"><?php echo $stats['approved']; ?></span>
+                    ✅ Одобрены <span class="count" id="tabCountApproved"><?php echo $stats['approved']; ?></span>
                 </a>
             </div>
 
@@ -764,6 +786,28 @@ function buildUrl($params = []) {
     <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
     <script>
+    function refreshReviewCounters(stats) {
+        if (!stats) return;
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
+        setText('statTotal', stats.total);
+        setText('statPending', stats.pending);
+        setText('statApproved', stats.approved);
+        setText('tabCountAll', stats.total);
+        setText('tabCountPending', stats.pending);
+        setText('tabCountApproved', stats.approved);
+        setText('statAvgRating', stats.avg_rating !== null ? Number(stats.avg_rating).toFixed(1) : '—');
+
+        const pendingBadge = document.getElementById('pendingNavBadge');
+        if (pendingBadge) {
+            pendingBadge.textContent = stats.pending;
+            pendingBadge.style.display = stats.pending > 0 ? 'inline-flex' : 'none';
+        }
+    }
+
     // ========== МОДЕРАЦИЯ (одобрить/отклонить) ==========
     async function moderateReview(reviewId, action) {
         const actionLabels = {
@@ -828,6 +872,7 @@ function buildUrl($params = []) {
                 // Подсветка
                 card.style.background = '#e8f5e9';
                 setTimeout(() => { card.style.background = ''; }, 1500);
+                refreshReviewCounters(data.stats);
 
             } else {
                 alert(data.error || 'Ошибка при обновлении');
@@ -861,6 +906,7 @@ function buildUrl($params = []) {
                 const card = document.getElementById('review-' + reviewId);
                 card.style.animation = 'fadeOut 0.3s ease forwards';
                 setTimeout(() => card.remove(), 300);
+                refreshReviewCounters(data.stats);
             } else {
                 alert(data.error || 'Ошибка при удалении');
             }

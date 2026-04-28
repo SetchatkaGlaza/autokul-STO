@@ -590,10 +590,9 @@ require_once 'includes/header.php';
                     <div class="contact-info-item">
                         <div class="contact-icon-box">💬</div>
                         <div class="contact-info-text">
-                            <h3>Мессенджеры</h3>
+                            <h3>Мы во ВКонтакте</h3>
                             <p>
-                                <a href="https://wa.me/79001234567" target="_blank" rel="noopener">WhatsApp</a> · 
-                                <a href="https://t.me/autokul" target="_blank" rel="noopener">Telegram</a>
+                                <a href="https://vk.com/autokul" target="_blank" rel="noopener">https://vk.com/autokul</a>
                             </p>
                         </div>
                     </div>

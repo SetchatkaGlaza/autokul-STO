@@ -1,5 +1,53 @@
 <?php
 // footer.php - Общий подвал сайта
+$footer_service_names = [
+    'Диагностика',
+    'Техническое обслуживание',
+    'Ремонт двигателя',
+    'Ремонт ходовой части',
+    'Ремонт трансмиссии',
+    'Шиномонтаж',
+    'Кузовной ремонт',
+    'Автоэлектрика'
+];
+
+$footer_categories = [];
+try {
+    if (!function_exists('getDBConnection')) {
+        require_once __DIR__ . '/config.php';
+    }
+    $pdo_footer = getDBConnection();
+    $stmt_footer = $pdo_footer->query("
+        SELECT c.id, c.name, COUNT(s.id) AS services_count
+        FROM categories c
+        LEFT JOIN services s ON s.category_id = c.id AND s.is_active = 1
+        GROUP BY c.id, c.name
+    ");
+    $categories_index = [];
+    foreach ($stmt_footer->fetchAll() as $cat) {
+        $categories_index[mb_strtolower(trim($cat['name']))] = $cat;
+    }
+    foreach ($footer_service_names as $name) {
+        $key = mb_strtolower(trim($name));
+        if (isset($categories_index[$key])) {
+            $footer_categories[] = $categories_index[$key];
+            continue;
+        }
+
+        // Фолбэк по частичному совпадению названия
+        foreach ($categories_index as $cat_name => $cat_data) {
+            if (mb_stripos($cat_name, $key) !== false || mb_stripos($key, $cat_name) !== false) {
+                $footer_categories[] = $cat_data;
+                continue 2;
+            }
+        }
+    }
+} catch (Exception $e) {
+    // Фолбэк без привязки к БД
+    foreach ($footer_service_names as $name) {
+        $footer_categories[] = ['id' => 0, 'name' => $name, 'services_count' => 0];
+    }
+}
 ?>
     </main>
 
@@ -21,11 +69,16 @@
                 <div class="footer-col">
                     <h3>Услуги</h3>
                     <ul>
-                        <li><a href="/services.php?search=%D0%94%D0%B8%D0%B0%D0%B3%D0%BD%D0%BE%D1%81%D1%82%D0%B8%D0%BA%D0%B0&sort=name">Диагностика</a></li>
-                        <li><a href="/services.php?search=%D0%A2%D0%B5%D1%85%D0%BE%D0%B1%D1%81%D0%BB%D1%83%D0%B6%D0%B8%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5&sort=name">Техобслуживание</a></li>
-                        <li><a href="/services.php?search=%D0%A0%D0%B5%D0%BC%D0%BE%D0%BD%D1%82+%D1%85%D0%BE%D0%B4%D0%BE%D0%B2%D0%BE%D0%B9&sort=name">Ремонт ходовой</a></li>
-                        <li><a href="/services.php?search=%D0%A8%D0%B8%D0%BD%D0%BE%D0%BC%D0%BE%D0%BD%D1%82%D0%B0%D0%B6&sort=name">Шиномонтаж</a></li>
-                        <li><a href="/services.php?search=%D0%9A%D1%83%D0%B7%D0%BE%D0%B2%D0%BD%D0%BE%D0%B9+%D1%80%D0%B5%D0%BC%D0%BE%D0%BD%D1%82&sort=name">Кузовной ремонт</a></li>
+                        <?php foreach ($footer_categories as $footer_cat): ?>
+                            <li>
+                                <a href="/services.php<?php echo !empty($footer_cat['id']) ? '?category=' . (int)$footer_cat['id'] . '&sort=name' : '?sort=name'; ?>">
+                                    <?php echo htmlspecialchars($footer_cat['name']); ?>
+                                    <?php if ((int)$footer_cat['services_count'] > 0): ?>
+                                        <span style="opacity: .7; font-size: 12px;"> <?php echo (int)$footer_cat['services_count']; ?></span>
+                                    <?php endif; ?>
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
                     </ul>
                 </div>
                 
@@ -70,7 +123,7 @@
         });
         
         // Закрытие меню при клике на ссылку
-        document.querySelectorAll('#mainNav .nav-link').forEach(link => {
+        document.querySelectorAll('#mainNav .header-nav-link').forEach(link => {
             link.addEventListener('click', () => {
                 document.getElementById('mainNav').classList.remove('open');
             });

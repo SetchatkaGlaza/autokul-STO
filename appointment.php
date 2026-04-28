@@ -249,14 +249,6 @@ require_once 'includes/header.php';
         gap: 8px;
     }
 
-    .step-title-label {
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--gray-500);
-        font-weight: 700;
-    }
-
     .step-number {
         width: 34px;
         height: 34px;
@@ -675,7 +667,7 @@ require_once 'includes/header.php';
 
         <!-- ====== ШАГ 1: ВЫБОР УСЛУГ ====== -->
         <div class="step-card" id="step1">
-            <h2><span class="step-number">1</span> <span class="step-title-text"><span class="step-title-label">Шаг 1</span> Выберите услуги</span></h2>
+            <h2><span class="step-number">1</span> <span class="step-title-text">Выберите услуги</span></h2>
 
             <?php if (isset($form_errors['services'])): ?>
                 <p style="color: #dc3545; font-size: 13px; margin-bottom: 12px;"><?php echo $form_errors['services']; ?></p>
@@ -763,7 +755,7 @@ require_once 'includes/header.php';
 
         <!-- ====== ШАГ 2: АВТОМОБИЛЬ ====== -->
         <div class="step-card" id="step2">
-            <h2><span class="step-number">2</span> <span class="step-title-text"><span class="step-title-label">Шаг 2</span> Выберите автомобиль</span></h2>
+            <h2><span class="step-number">2</span> <span class="step-title-text">Выберите автомобиль</span></h2>
 
             <?php if (isset($form_errors['car'])): ?>
                 <p style="color: #dc3545; font-size: 13px; margin-bottom: 12px;"><?php echo $form_errors['car']; ?></p>
@@ -829,7 +821,7 @@ require_once 'includes/header.php';
 
         <!-- ====== ШАГ 3: ДАТА И ВРЕМЯ ====== -->
         <div class="step-card" id="step3">
-            <h2><span class="step-number">3</span> <span class="step-title-text"><span class="step-title-label">Шаг 3</span> Выберите дату и время</span></h2>
+            <h2><span class="step-number">3</span> <span class="step-title-text">Выберите дату и время</span></h2>
 
             <div style="margin-bottom: 16px;">
                 <label style="font-weight: 600; display: block; margin-bottom: 6px;">Дата визита</label>
@@ -859,7 +851,7 @@ require_once 'includes/header.php';
 
         <!-- ====== ШАГ 4: ПРИМЕЧАНИЯ ====== -->
         <div class="step-card">
-            <h2><span class="step-number">4</span> <span class="step-title-text"><span class="step-title-label">Шаг 4</span> Примечания к записи</span></h2>
+            <h2><span class="step-number">4</span> <span class="step-title-text">Примечания к записи</span></h2>
             <textarea name="notes" rows="3" placeholder="Опишите проблему или особые пожелания (необязательно)..." 
                       style="width: 100%; padding: 12px 14px; border: 1px solid var(--gray-300); border-radius: 10px; font-family: inherit; font-size: 14px; resize: vertical;"></textarea>
         </div>

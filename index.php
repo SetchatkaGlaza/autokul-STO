@@ -42,7 +42,7 @@ require_once 'includes/header.php';
             </div>
             <div class="hero-image">
                 <div class="hero-image-placeholder">
-                    <img src="/uploads/services/service_1777329970_99ffa6b1e66181e5.jpg" alt="Автокул СТО в Вологде" loading="eager">
+                    <img src="/uploads/avatars/index.jpg" alt="Автокул СТО в Вологде" loading="eager">
                 </div>
             </div>
         </div>
