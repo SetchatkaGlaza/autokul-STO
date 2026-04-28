@@ -120,13 +120,24 @@ try {
         // Мобильное меню
         document.getElementById('mobileMenuToggle').addEventListener('click', function() {
             document.getElementById('mainNav').classList.toggle('open');
+            this.classList.toggle('active');
         });
         
         // Закрытие меню при клике на ссылку
         document.querySelectorAll('#mainNav .header-nav-link').forEach(link => {
             link.addEventListener('click', () => {
                 document.getElementById('mainNav').classList.remove('open');
+                document.getElementById('mobileMenuToggle').classList.remove('active');
             });
+        });
+
+        document.addEventListener('click', function(e) {
+            const nav = document.getElementById('mainNav');
+            const toggle = document.getElementById('mobileMenuToggle');
+            if (nav && toggle && !nav.contains(e.target) && !toggle.contains(e.target)) {
+                nav.classList.remove('open');
+                toggle.classList.remove('active');
+            }
         });
     </script>
 </body>

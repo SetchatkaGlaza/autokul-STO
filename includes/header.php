@@ -112,7 +112,11 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
         .header-nav {
             display: flex;
             align-items: center;
-            gap: 2px;
+            gap: 4px;
+            background: #fafafa;
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid #f0f0f0;
         }
 
         .header-nav-link {
@@ -314,10 +318,15 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
         .header-mobile-toggle {
             display: none;
             background: none;
-            border: none;
+            border: 1px solid #e3e3e3;
             cursor: pointer;
             padding: 8px;
             border-radius: 6px;
+            width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
         }
 
         .header-mobile-toggle:hover {
@@ -332,6 +341,22 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             margin: 5px 0;
             border-radius: 1px;
             transition: all 0.3s ease;
+        }
+
+        .header-mobile-toggle.active span:nth-child(1) {
+            transform: translateY(7px) rotate(45deg);
+        }
+
+        .header-mobile-toggle.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .header-mobile-toggle.active span:nth-child(3) {
+            transform: translateY(-7px) rotate(-45deg);
+        }
+
+        .mobile-auth-links {
+            display: none;
         }
 
         /* ========== АДАПТИВНОСТЬ ========== */
@@ -349,13 +374,14 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             .header-nav {
                 display: none;
                 position: absolute;
-                top: 60px;
-                left: 0;
-                right: 0;
+                top: 64px;
+                left: 10px;
+                right: 10px;
                 background: #ffffff;
                 flex-direction: column;
-                padding: 8px 16px;
-                border-bottom: 2px solid #e8eaed;
+                padding: 10px;
+                border: 1px solid #ececec;
+                border-radius: 12px;
                 box-shadow: 0 8px 20px rgba(0,0,0,0.08);
                 gap: 2px;
             }
@@ -367,6 +393,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             .header-nav-link {
                 padding: 12px 16px;
                 border-radius: 6px;
+                width: 100%;
             }
 
             .header-nav-link.active::after {
@@ -379,16 +406,31 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             }
 
             .header-mobile-toggle {
-                display: block;
+                display: inline-flex;
             }
 
-            .header-auth .btn {
-                padding: 8px 14px;
-                font-size: 12px;
-            }
+            .header-auth { display: none; }
+            .header-phone { display: none; }
 
             .header-user-name {
                 display: none;
+            }
+
+            .mobile-auth-links {
+                display: flex;
+                width: 100%;
+                margin-top: 6px;
+                padding-top: 8px;
+                border-top: 1px solid #f1f1f1;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+
+            .mobile-auth-links .btn,
+            .mobile-auth-links a {
+                width: 100%;
+                text-align: center;
+                justify-content: center;
             }
         }
 
@@ -443,6 +485,19 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                 <a href="/contacts.php" class="header-nav-link <?php echo $current_page === 'contacts' ? 'active' : ''; ?>">
                     Контакты
                 </a>
+
+                <div class="mobile-auth-links">
+                    <?php if (isLoggedIn()): ?>
+                        <a href="/profile.php" class="btn btn-outline-dark btn-sm">Личный кабинет</a>
+                        <?php if (hasRole('admin') || hasRole('mechanic')): ?>
+                            <a href="/admin/" class="btn btn-outline-dark btn-sm">Панель управления</a>
+                        <?php endif; ?>
+                        <a href="/logout.php" class="btn btn-accent btn-sm">Выйти</a>
+                    <?php else: ?>
+                        <a href="/login.php" class="btn btn-outline-dark btn-sm">Войти</a>
+                        <a href="/register.php" class="btn btn-accent btn-sm">Регистрация</a>
+                    <?php endif; ?>
+                </div>
             </nav>
 
             <!-- Правая часть -->
@@ -507,25 +562,3 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
     </header>
 
     <main>
-        <script>
-            // Мобильное меню
-            document.getElementById('mobileMenuToggle').addEventListener('click', function() {
-                document.getElementById('mainNav').classList.toggle('open');
-            });
-
-            // Закрытие меню при клике на ссылку
-            document.querySelectorAll('#mainNav .header-nav-link').forEach(link => {
-                link.addEventListener('click', () => {
-                    document.getElementById('mainNav').classList.remove('open');
-                });
-            });
-
-            // Закрытие меню при клике вне его
-            document.addEventListener('click', function(e) {
-                const nav = document.getElementById('mainNav');
-                const toggle = document.getElementById('mobileMenuToggle');
-                if (!nav.contains(e.target) && !toggle.contains(e.target)) {
-                    nav.classList.remove('open');
-                }
-            });
-        </script>
