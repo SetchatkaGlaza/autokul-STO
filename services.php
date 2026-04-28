@@ -413,6 +413,33 @@ require_once 'includes/header.php';
             height: 200px;
         }
     }
+
+    @media (max-width: 520px) {
+        .services-page {
+            padding: 0 12px 28px;
+        }
+
+        .filters-panel {
+            padding: 14px;
+        }
+
+        .sort-select,
+        .search-wrapper input {
+            font-size: 13px;
+        }
+
+        .service-card-body {
+            padding: 16px;
+        }
+
+        .service-card-footer {
+            padding: 12px 16px;
+        }
+
+        .service-price {
+            font-size: 18px;
+        }
+    }
 </style>
 
 <section class="page-hero">

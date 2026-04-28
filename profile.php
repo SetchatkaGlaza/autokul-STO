@@ -658,6 +658,49 @@ require_once 'includes/header.php';
             padding: 8px 6px;
         }
     }
+
+    @media (max-width: 560px) {
+        .profile-content-card {
+            padding: 18px 14px;
+        }
+
+        .profile-content-card h2 {
+            font-size: 19px;
+        }
+
+        .profile-user-info {
+            padding: 18px 12px;
+        }
+
+        .profile-avatar {
+            width: 64px;
+            height: 64px;
+        }
+
+        .stars-input label {
+            font-size: 26px;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .appointments-table {
+            min-width: 720px;
+        }
+    }
+
+    @media (max-width: 400px) {
+        .profile-nav a {
+            font-size: 12px;
+            padding: 9px 10px;
+        }
+
+        .profile-nav-icon {
+            width: 20px;
+            font-size: 16px;
+        }
+    }
 </style>
 
 <!-- ========== ОСНОВНОЙ КОНТЕНТ ========== -->

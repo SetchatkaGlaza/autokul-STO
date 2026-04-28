@@ -619,6 +619,33 @@ require_once 'includes/header.php';
     }
 
     /* ========== АДАПТИВНОСТЬ ========== */
+    @media (max-width: 1024px) {
+        .appointment-page {
+            max-width: 100%;
+            margin: 24px auto;
+        }
+    }
+
+    @media (max-width: 760px) {
+        .appointment-page h1 {
+            font-size: 24px;
+        }
+
+        .appointment-subtitle {
+            font-size: 14px;
+        }
+
+        .step-card h2 {
+            font-size: 18px;
+        }
+
+        .step-number {
+            width: 30px;
+            height: 30px;
+            font-size: 14px;
+        }
+    }
+
     @media (max-width: 600px) {
         .step-card {
             padding: 18px 16px;
@@ -637,6 +664,29 @@ require_once 'includes/header.php';
         }
         .time-slots-grid {
             grid-template-columns: repeat(3, 1fr);
+        }
+
+        .submit-btn {
+            padding: 14px;
+            font-size: 16px;
+        }
+    }
+
+    @media (max-width: 430px) {
+        .appointment-page {
+            padding: 0 12px;
+        }
+
+        .time-slots-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .service-item {
+            padding: 10px;
+        }
+
+        .service-item-info .svc-name {
+            font-size: 14px;
         }
     }
 </style>

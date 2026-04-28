@@ -534,6 +534,49 @@ require_once 'includes/header.php';
             padding: 20px 18px;
         }
     }
+
+    @media (max-width: 600px) {
+        .contacts-page {
+            padding: 0 12px;
+        }
+
+        .page-hero {
+            padding: 34px 14px 30px;
+        }
+
+        .page-hero h1 {
+            font-size: 22px;
+        }
+
+        .page-hero p {
+            font-size: 14px;
+        }
+
+        .contact-info-item {
+            gap: 10px;
+        }
+
+        .contact-icon-box {
+            width: 38px;
+            height: 38px;
+            font-size: 16px;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .info-card h2 {
+            font-size: 18px;
+        }
+
+        .schedule-day,
+        .schedule-time {
+            font-size: 13px;
+        }
+
+        .direction-item {
+            font-size: 13px;
+        }
+    }
 </style>
 
 <!-- ========== ЗАГОЛОВОК ========== -->

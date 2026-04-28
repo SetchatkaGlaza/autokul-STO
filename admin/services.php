@@ -873,6 +873,17 @@ $services = $stmt->fetchAll();
             .filters-card { flex-direction: column; }
             .form-row { grid-template-columns: 1fr; }
         }
+
+        @media (max-width: 520px) {
+            .admin-content { padding: 10px; }
+            .admin-header h1 { font-size: 22px; }
+            .service-card-admin { padding: 12px; }
+            .service-thumb { height: 120px; }
+            .service-price { font-size: 18px; }
+            .modal-card { width: calc(100% - 16px); padding: 16px; }
+            .modal-actions { flex-direction: column-reverse; }
+            .modal-actions .btn { width: 100%; justify-content: center; }
+        }
     </style>
 </head>
 <body>

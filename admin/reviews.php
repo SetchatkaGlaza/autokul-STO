@@ -581,6 +581,26 @@ function buildUrl($params = []) {
             .review-card-admin { padding: 14px; }
             .filters-bar { flex-direction: column; }
         }
+
+        @media (max-width: 520px) {
+            .admin-content { padding: 10px; }
+            .admin-header h1 { font-size: 22px; }
+            .review-card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .review-actions {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .review-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            .stat-value { font-size: 24px; }
+        }
     </style>
 </head>
 <body>
